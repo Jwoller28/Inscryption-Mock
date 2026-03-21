@@ -356,6 +356,18 @@ h3 {
   margin-top: 16px;
 }
 
+.battle-tray-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.tray-items {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(184, 138, 82, 0.18);
+}
+
 .hand-strip {
   display: grid;
   grid-auto-flow: column;
@@ -364,6 +376,14 @@ h3 {
   overflow-x: auto;
   padding-bottom: 4px;
   margin-top: 12px;
+}
+
+.hand-empty {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(10, 17, 16, 0.62);
+  color: var(--muted);
+  font: 600 0.82rem/1.35 "Trebuchet MS", sans-serif;
 }
 
 .choice-summary {
@@ -434,6 +454,49 @@ h3 {
   visibility: visible;
   opacity: 1;
   pointer-events: auto;
+}
+
+.draw-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.draw-modal:not(.hidden) {
+  display: flex;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.draw-dialog {
+  position: relative;
+  z-index: 1;
+  width: min(420px, calc(100vw - 28px));
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(227, 186, 111, 0.28);
+  background:
+    radial-gradient(circle at top right, rgba(202, 143, 59, 0.16), transparent 22%),
+    linear-gradient(180deg, rgba(23, 37, 34, 0.98), rgba(14, 23, 20, 0.98));
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
+}
+
+.draw-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.draw-actions button {
+  flex: 1 1 0;
 }
 
 .sigil-dialog {
@@ -545,6 +608,16 @@ h3 {
   margin-top: 10px;
 }
 
+.info-panel {
+  padding-top: 14px;
+  border-top: 1px solid rgba(184, 138, 82, 0.18);
+}
+
+.side-panel-tabs + .info-panel {
+  padding-top: 0;
+  border-top: 0;
+}
+
 .item-button {
   background: linear-gradient(180deg, #ebd8ad, #a77a3f);
   font: 700 0.9rem/1.2 Georgia, serif;
@@ -639,7 +712,7 @@ button:disabled {
 
 @media (max-width: 720px) {
   .app-shell {
-    padding: calc(8px + env(safe-area-inset-top, 0px)) 8px calc(110px + env(safe-area-inset-bottom, 0px));
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 8px calc(170px + env(safe-area-inset-bottom, 0px));
   }
 
   .topbar {
@@ -722,7 +795,7 @@ button:disabled {
     bottom: calc(8px + env(safe-area-inset-bottom, 0px));
     z-index: 20;
     margin-top: 0;
-    padding: 10px;
+    padding: 8px;
     border-radius: 18px;
     background: rgba(15, 24, 22, 0.96);
     box-shadow: 0 18px 36px rgba(0, 0, 0, 0.45);
@@ -735,7 +808,30 @@ button:disabled {
   .hand-strip {
     grid-auto-columns: minmax(102px, 112px);
     padding-bottom: 2px;
+    margin-top: 6px;
+  }
+
+  .battle-tray-actions {
     margin-top: 8px;
+  }
+
+  .battle-tray-actions .primary-button {
+    width: 100%;
+    padding: 10px 12px;
+  }
+
+  .tray-items {
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+
+  .tray-items .section-head span {
+    display: none;
+  }
+
+  .hand-empty {
+    padding: 10px;
+    font-size: 0.74rem;
   }
 
   .section-head-large {
@@ -813,14 +909,25 @@ button:disabled {
   }
 
   .item-button {
-    min-width: 118px;
-    padding: 10px;
-    font-size: 0.8rem;
+    min-width: 98px;
+    padding: 8px;
+    font-size: 0.72rem;
   }
 
   .sigil-dialog {
     width: min(460px, calc(100vw - 20px));
     padding: 14px;
+  }
+
+  .draw-dialog {
+    width: min(360px, calc(100vw - 20px));
+    padding: 14px;
+  }
+
+  .draw-actions {
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
   }
 
   .sigil-entry {

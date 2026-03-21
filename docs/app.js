@@ -175,6 +175,8 @@ const refs = {
   sigilTitle: document.getElementById("sigil-title"),
   sigilBody: document.getElementById("sigil-body"),
   closeSigilButton: document.getElementById("close-sigil-button"),
+  drawModal: document.getElementById("draw-modal"),
+  drawBackdrop: document.getElementById("draw-modal-backdrop"),
   scaleText: document.getElementById("scale-text"),
   bonesText: document.getElementById("bones-text"),
   selectionText: document.getElementById("selection-text"),
@@ -1733,6 +1735,7 @@ function render() {
   renderLog();
   renderInfoPanels();
   renderSigilInspector();
+  renderDrawModal();
   refs.endTurnButton.disabled = state.mode !== "battle";
 }
 
@@ -1813,6 +1816,16 @@ function renderSigilInspector() {
   `).join("");
 }
 
+function renderDrawModal() {
+  const active = state.mode === "battle" && state.battle.awaitingDrawChoice;
+  refs.drawModal.classList.toggle("hidden", !active);
+  refs.drawModal.setAttribute("aria-hidden", String(!active));
+  refs.drawModal.inert = !active;
+  refs.drawCaption.textContent = active ? "Choose how to start your turn." : "";
+  refs.drawSquirrelButton.disabled = !active;
+  refs.drawDeckButton.disabled = !active;
+}
+
 function renderMeta() {
   const node = getCurrentNode();
   refs.screenText.textContent = state.currentScreen || "Battle";
@@ -1855,9 +1868,6 @@ function renderBattle() {
   refs.selectionText.textContent = getSelectedHandCard() ? getSelectedHandCard().name : "None";
   refs.selectionHintText.textContent = getSelectionHint();
   refs.itemCountText.textContent = String(state.items.length);
-  refs.drawCaption.textContent = state.battle.awaitingDrawChoice ? "Choose one before playing" : "Waiting for end of turn";
-  refs.drawSquirrelButton.disabled = !state.battle.awaitingDrawChoice;
-  refs.drawDeckButton.disabled = !state.battle.awaitingDrawChoice;
   refs.queueCaption.textContent = state.battle.enemyDeck.length > 0 ? `${state.battle.enemyDeck.length} cards left in enemy deck` : "Enemy deck empty";
 
   renderLane(refs.enemyQueue, state.battle.enemyQueue, "enemy", null);
@@ -1923,6 +1933,13 @@ function renderLane(container, slots, side, onClick) {
 
 function renderHand() {
   refs.handStrip.innerHTML = "";
+  if (!state.battle.hand.length) {
+    const empty = document.createElement("div");
+    empty.className = "hand-empty";
+    empty.textContent = "Your hand is empty.";
+    refs.handStrip.appendChild(empty);
+    return;
+  }
   state.battle.hand.forEach((card, index) => {
     const button = document.createElement("button");
     button.className = "hand-card selectable";
@@ -2258,7 +2275,7 @@ function getCostShortLabel(card) {
   if (card.cost <= 0) {
     return "0";
   }
-  return card.costType === "bones" ? `${card.cost}N` : `${card.cost}B`;
+  return card.costType === "bones" ? `${card.cost}Bn` : `${card.cost}Bd`;
 }
 
 function formatCardMarkup(card) {

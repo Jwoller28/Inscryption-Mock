@@ -29,7 +29,6 @@
       <div class="topbar-actions">
         <button id="new-run-button" class="secondary-button">New Run</button>
         <button id="clear-save-button" class="ghost-button">Clear Save</button>
-        <button id="end-turn-button" class="primary-button">End Turn</button>
       </div>
     </header>
 
@@ -87,25 +86,6 @@
 
           <section class="board-section">
             <div class="section-head">
-              <h3>Items</h3>
-              <span>Tap once per battle item to use it</span>
-            </div>
-            <div id="item-bar" class="item-bar"></div>
-          </section>
-
-          <section class="board-section">
-            <div class="section-head">
-              <h3>Draw</h3>
-              <span id="draw-caption">Choose how to start your turn</span>
-            </div>
-            <div class="item-bar">
-              <button id="draw-squirrel-button" class="secondary-button">Draw Squirrel</button>
-              <button id="draw-deck-button" class="ghost-button">Draw From Deck</button>
-            </div>
-          </section>
-
-          <section class="board-section">
-            <div class="section-head">
               <h3>Enemy Queue</h3>
               <span id="queue-caption">Incoming cards</span>
             </div>
@@ -140,21 +120,26 @@
               <span></span>
             </div>
             <div id="hand-strip" class="hand-strip"></div>
+            <div class="battle-tray-actions">
+              <button id="end-turn-button" class="primary-button">End Turn</button>
+            </div>
+            <div class="tray-items">
+              <div class="section-head">
+                <h3>Items</h3>
+                <span>Use once per battle</span>
+              </div>
+              <div id="item-bar" class="item-bar"></div>
+            </div>
           </section>
         </section>
       </section>
 
       <aside class="side-panel panel">
         <div class="side-panel-tabs" aria-label="Info panels">
-          <button id="info-tab-run" class="side-tab-button active" type="button">Run</button>
           <button id="info-tab-deck" class="side-tab-button" type="button">Deck</button>
           <button id="info-tab-log" class="side-tab-button" type="button">Log</button>
+          <button id="info-tab-run" class="side-tab-button active" type="button">Run</button>
         </div>
-
-        <section id="info-panel-run" class="info-block info-panel active">
-          <h3>Run</h3>
-          <p id="run-text"></p>
-        </section>
 
         <section id="info-panel-deck" class="info-block info-panel">
           <h3>Deck</h3>
@@ -164,6 +149,11 @@
         <section id="info-panel-log" class="info-block info-panel">
           <h3>Log</h3>
           <div id="log-panel" class="log-panel"></div>
+        </section>
+
+        <section id="info-panel-run" class="info-block info-panel active">
+          <h3>Run</h3>
+          <p id="run-text"></p>
         </section>
       </aside>
     </main>
@@ -195,6 +185,23 @@
         <button id="close-sigil-button" class="ghost-button" type="button">Close</button>
       </div>
       <div id="sigil-body" class="sigil-body"></div>
+    </section>
+  </div>
+
+  <div id="draw-modal" class="draw-modal hidden" aria-hidden="true">
+    <div id="draw-modal-backdrop" class="choice-modal-backdrop"></div>
+    <section class="draw-dialog">
+      <div class="choice-dialog-head">
+        <div>
+          <p class="eyebrow">Draw</p>
+          <h2>Choose Your Draw</h2>
+        </div>
+      </div>
+      <p id="draw-caption" class="choice-copy">Choose how to start your turn.</p>
+      <div class="draw-actions">
+        <button id="draw-squirrel-button" class="secondary-button" type="button">Draw Squirrel</button>
+        <button id="draw-deck-button" class="ghost-button" type="button">Draw From Deck</button>
+      </div>
     </section>
   </div>
 

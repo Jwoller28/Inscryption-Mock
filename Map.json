@@ -1,0 +1,246 @@
+{
+  "game": "Inscryption",
+  "map": {
+    "structure": {
+      "type": "branching_path",
+      "forward_choices": { "min": 2, "max": 3 },
+      "regions": [
+        { "id": "woodlands", "order": 1 },
+        { "id": "wetlands", "order": 2 },
+        { "id": "snowline", "order": 3 }
+      ],
+      "nodes_per_region": { "min": 8, "max": 12 },
+      "progression": {
+        "movement": "forward_only",
+        "boss_at_end_of_region": true,
+        "post_boss": ["reset_board_state", "relight_candle"]
+      },
+      "constraints": {
+        "no_consecutive_rare_duplicates": true,
+        "rare_node_types": [
+          "TRAPPER",
+          "TRADER",
+          "WOODCARVER",
+          "MYCOLOGISTS",
+          "SIGIL_TRANSFER"
+        ]
+      }
+    },
+    "spawn_balancing": {
+      "distribution_percent": {
+        "BATTLE": [50, 60],
+        "CAMPFIRE": [10, 15],
+        "BACKPACK": [5, 10],
+        "SIGIL_TRANSFER": [5, 10],
+        "WOODCARVER": [5, 10],
+        "MYCOLOGISTS": [3, 5],
+        "ECONOMY": [3, 5]
+      },
+      "economy_node_pool": ["TRAPPER", "TRADER"]
+    }
+  },
+  "nodes": [
+    {
+      "type": "BATTLE",
+      "id": "battle_standard",
+      "category": "combat",
+      "visual": {
+        "setting": "wooden_table",
+        "board_lanes": { "player": 4, "opponent": 4 },
+        "centerpiece": "damage_scale",
+        "props": ["candles", "teeth_counter"]
+      },
+      "rules": {
+        "turns": "alternating",
+        "draw_per_turn": 1,
+        "resources": {
+          "blood": {
+            "generated_by": "sacrificing_creatures",
+            "spent_to_play": "blood_cost_cards"
+          },
+          "bones": {
+            "generated_by": "creature_deaths",
+            "spent_to_play": "bone_cost_cards"
+          }
+        },
+        "win_condition": { "scale_advantage": 5 },
+        "reward": { "overkill_damage_to_currency": "teeth" }
+      }
+    },
+    {
+      "type": "BACKPACK",
+      "id": "item_node",
+      "category": "utility",
+      "visual": { "setting": "open_backpack", "choices_shown": 3 },
+      "rules": {
+        "inventory_limit": 3,
+        "on_full_inventory": "force_use_or_discard_one",
+        "grant": { "choose": 1, "from_random_choices": 3 },
+        "items_single_use_in_battle": true
+      },
+      "item_examples": [
+        { "id": "pliers", "effect": "deal_1_damage_to_self" },
+        { "id": "squirrel_bottle", "effect": "add_squirrel_to_hand" },
+        { "id": "hourglass", "effect": "skip_opponent_turn" },
+        { "id": "fan", "effect": "grant_airborne_attacks_this_turn" }
+      ]
+    },
+    {
+      "type": "CAMPFIRE",
+      "id": "campfire_buff",
+      "category": "risk_reward",
+      "visual": { "setting": "campfire_with_survivors" },
+      "rules": {
+        "select_card": 1,
+        "buff_choice": [
+          { "stat": "power", "delta": 1 },
+          { "stat": "health", "delta": 2 }
+        ],
+        "can_buff_twice": true,
+        "second_buff_risk": { "chance_destroy_card": "tunable_probability" }
+      }
+    },
+    {
+      "type": "TRAPPER",
+      "id": "trapper_shop",
+      "category": "economy",
+      "visual": { "setting": "fur_table", "currency": "teeth" },
+      "rules": {
+        "buy_with_currency": "teeth",
+        "sell_items": [
+          { "id": "rabbit_pelt", "tier": "common", "cost": "tunable" },
+          { "id": "wolf_pelt", "tier": "uncommon", "cost": "tunable" },
+          { "id": "golden_pelt", "tier": "rare", "cost": "tunable" }
+        ],
+        "pelt_card_role": "trade_token"
+      }
+    },
+    {
+      "type": "TRADER",
+      "id": "trader_exchange",
+      "category": "economy",
+      "visual": { "setting": "trade_table", "grid": "cards_by_tier" },
+      "rules": {
+        "for_each_pelt": "choose_1_reward_card",
+        "tiers": {
+          "rabbit_pelt": "standard_pool",
+          "wolf_pelt": "strong_pool",
+          "golden_pelt": "rare_pool"
+        }
+      }
+    },
+    {
+      "type": "SIGIL_TRANSFER",
+      "id": "ritual_stones",
+      "category": "deck_mutation",
+      "visual": { "setting": "two_glowing_stones" },
+      "rules": {
+        "select_donor_card": 1,
+        "donor_is_destroyed": true,
+        "select_receiver_card": 1,
+        "receiver_gains": "donor_sigil",
+        "permanent_change": true
+      }
+    },
+    {
+      "type": "WOODCARVER",
+      "id": "totem_builder",
+      "category": "deck_synergy",
+      "visual": { "setting": "woodcarver_table", "parts": ["head", "base"] },
+      "rules": {
+        "gain_piece_choice": ["TOTEM_HEAD", "TOTEM_BASE"],
+        "totem_effect": "if_head_and_base_match_then_apply_base_sigil_to_tribe_cards",
+        "totem_heads": ["CANINE", "INSECT", "HOOVED", "AVIAN"],
+        "totem_base_effect": "any_single_sigil"
+      }
+    },
+    {
+      "type": "MYCOLOGISTS",
+      "id": "card_merge",
+      "category": "deck_mutation",
+      "visual": { "setting": "mushroom_surgeons", "effect": "stitched_merge" },
+      "rules": {
+        "requires": { "duplicate_cards": 2, "same_card_id": true },
+        "result": {
+          "power": "sum",
+          "health": "sum",
+          "sigils": "union"
+        },
+        "permanent_change": true,
+        "deck_size_change": -1
+      }
+    },
+    {
+      "type": "BOSS",
+      "id": "boss_prospector",
+      "boss_key": "PROSPECTOR",
+      "category": "combat_boss",
+      "rules": {
+        "phases": [
+          {
+            "phase": 1,
+            "mechanics": ["mule_appears_reward_on_kill"]
+          },
+          {
+            "phase": 2,
+            "mechanics": ["transform_all_player_cards_into_gold_nuggets"]
+          }
+        ]
+      }
+    },
+    {
+      "type": "BOSS",
+      "id": "boss_angler",
+      "boss_key": "ANGLER",
+      "category": "combat_boss",
+      "rules": {
+        "phases": [
+          {
+            "phase": 1,
+            "mechanics": ["hook_steals_player_cards"]
+          },
+          {
+            "phase": 2,
+            "mechanics": ["replace_enemy_board_with_bait_buckets", "bait_bucket_death_spawns_shark"]
+          }
+        ]
+      }
+    },
+    {
+      "type": "BOSS",
+      "id": "boss_trapper_trader",
+      "boss_key": "TRAPPER_TRADER",
+      "category": "combat_boss",
+      "rules": {
+        "phases": [
+          {
+            "phase": 1,
+            "mechanics": ["leaping_traps_kill_attackers"]
+          },
+          {
+            "phase": 2,
+            "mechanics": ["mid_combat_pelt_trade_for_cards"]
+          }
+        ]
+      }
+    },
+    {
+      "type": "SPECIAL_EVENT",
+      "id": "grizzly_wall",
+      "category": "challenge_gate",
+      "optional": true,
+      "rules": {
+        "spawn_enemy_cards": 8,
+        "enemy_card": { "id": "grizzly", "power": 4, "health": 6 },
+        "intent": "punishment_or_progression_gate"
+      }
+    }
+  ],
+  "design_principles": [
+    "Nodes should meaningfully alter deck trajectory",
+    "Permanent deck mutation is higher value than temporary buffs",
+    "Campfire should create risk/reward tension",
+    "Deck thinning is powerful",
+    "Economy (teeth/pelts) feeds rare scaling"
+  ]
+}

@@ -34,6 +34,32 @@ const SIGIL_META = {
   Waterborne: "Enemy attacks pass over it.",
   Repulsive: "Cannot be targeted directly."
 };
+const SIGIL_ICONS = {
+  Airborne: "W",
+  "Mighty Leap": "^",
+  Burrower: "_",
+  Leader: "+",
+  "Sharp Quills": "*",
+  "Double Strike": "II",
+  "Bifurcated Strike": "V",
+  "Trifurcated Strike": "Y",
+  "Bees Within": "B",
+  Stinky: "~",
+  "Bone King": "K",
+  "Worthy Sacrifice": "3",
+  Fledgling: ">",
+  Guardian: "G",
+  "Ant Spawner": "A",
+  Bellist: "C",
+  "Blood Lust": "!",
+  "Corpse Eater": "E",
+  Scavenger: "$",
+  Waterborne: "=",
+  Repulsive: "X",
+  "Touch of Death": "T",
+  "Many Lives": "M",
+  Unkillable: "U"
+};
 const ITEM_DEFS = {
   pliers: { id: "pliers", name: "Pliers", description: "Deal 1 direct damage to the enemy scale." },
   squirrelBottle: { id: "squirrelBottle", name: "Squirrel Bottle", description: "Add a Squirrel to your hand." },
@@ -125,7 +151,8 @@ const CARD_LIBRARY = {
 
 const state = createInitialState();
 const uiState = {
-  mobileInfoPanel: "run"
+  mobileInfoPanel: "run",
+  sigilInspector: null
 };
 const refs = {
   screenText: document.getElementById("screen-text"),
@@ -143,6 +170,11 @@ const refs = {
   closeChoiceButton: document.getElementById("close-choice-button"),
   choiceSummary: document.getElementById("choice-summary"),
   choiceActions: document.getElementById("choice-actions"),
+  sigilModal: document.getElementById("sigil-modal"),
+  sigilBackdrop: document.getElementById("sigil-modal-backdrop"),
+  sigilTitle: document.getElementById("sigil-title"),
+  sigilBody: document.getElementById("sigil-body"),
+  closeSigilButton: document.getElementById("close-sigil-button"),
   scaleText: document.getElementById("scale-text"),
   bonesText: document.getElementById("bones-text"),
   selectionText: document.getElementById("selection-text"),
@@ -178,6 +210,8 @@ refs.drawSquirrelButton.addEventListener("click", () => chooseDraw("squirrel"));
 refs.drawDeckButton.addEventListener("click", () => chooseDraw("deck"));
 refs.closeChoiceButton.addEventListener("click", forceCloseModal);
 refs.choiceBackdrop.addEventListener("click", forceCloseModal);
+refs.closeSigilButton.addEventListener("click", closeSigilInspector);
+refs.sigilBackdrop.addEventListener("click", closeSigilInspector);
 refs.infoTabRun.addEventListener("click", () => setMobileInfoPanel("run"));
 refs.infoTabDeck.addEventListener("click", () => setMobileInfoPanel("deck"));
 refs.infoTabLog.addEventListener("click", () => setMobileInfoPanel("log"));
@@ -1698,6 +1732,7 @@ function render() {
   renderDeck();
   renderLog();
   renderInfoPanels();
+  renderSigilInspector();
   refs.endTurnButton.disabled = state.mode !== "battle";
 }
 
@@ -1738,6 +1773,44 @@ function forceCloseModal() {
   }
   restoreNodeScreenState(getCurrentNode());
   render();
+}
+
+function openSigilInspector(card) {
+  if (!card || !card.sigils?.length) {
+    return;
+  }
+  uiState.sigilInspector = {
+    cardName: card.name,
+    sigils: [...card.sigils]
+  };
+  renderSigilInspector();
+}
+
+function closeSigilInspector() {
+  uiState.sigilInspector = null;
+  renderSigilInspector();
+}
+
+function renderSigilInspector() {
+  const active = !!uiState.sigilInspector;
+  refs.sigilModal.classList.toggle("hidden", !active);
+  refs.sigilModal.setAttribute("aria-hidden", String(!active));
+  refs.sigilModal.inert = !active;
+  if (!active) {
+    refs.sigilBody.innerHTML = "";
+    return;
+  }
+
+  refs.sigilTitle.textContent = `${uiState.sigilInspector.cardName} Sigils`;
+  refs.sigilBody.innerHTML = uiState.sigilInspector.sigils.map((sigil) => `
+    <article class="sigil-entry">
+      <div class="sigil-entry-icon">${escapeHtml(getSigilIcon(sigil))}</div>
+      <div>
+        <strong>${escapeHtml(sigil)}</strong>
+        <p class="choice-copy">${escapeHtml(SIGIL_META[sigil] || "Special ability.")}</p>
+      </div>
+    </article>
+  `).join("");
 }
 
 function renderMeta() {
@@ -1828,12 +1901,22 @@ function renderLane(container, slots, side, onClick) {
     if (side === "player" && state.selection.selectedSacrificeIndexes.includes(index)) {
       button.classList.add("sacrifice-selected");
     }
-    button.innerHTML = card ? formatCardMarkup(card) : `<span class="empty-caption">${side === "player" ? "Empty lane" : "No card"}</span>`;
+    button.innerHTML = card ? formatCardMarkup(card) : `<span class="empty-caption">${side === "player" ? "Empty" : "None"}</span>`;
     if (onClick) {
-      button.addEventListener("click", () => onClick(index));
+      button.addEventListener("click", () => {
+        if (card && card.sigils?.length && !getSelectedHandCard()) {
+          openSigilInspector(card);
+          return;
+        }
+        onClick(index);
+      });
+    } else if (card && card.sigils?.length) {
+      button.disabled = false;
+      button.addEventListener("click", () => openSigilInspector(card));
     } else {
       button.disabled = true;
     }
+    bindSigilButtons(button, card);
     container.appendChild(button);
   });
 }
@@ -1847,7 +1930,14 @@ function renderHand() {
       button.classList.add("selected");
     }
     button.innerHTML = formatCardMarkup(card);
-    button.addEventListener("click", () => selectHandCard(index));
+    button.addEventListener("click", () => {
+      if (state.selection.selectedHandIndex === index && card.sigils?.length) {
+        openSigilInspector(card);
+        return;
+      }
+      selectHandCard(index);
+    });
+    bindSigilButtons(button, card);
     refs.handStrip.appendChild(button);
   });
 }
@@ -1893,6 +1983,7 @@ function renderChoiceScreen() {
       card.className = "choice-card card-choice";
       card.innerHTML = `${formatCardMarkup(option.card)}<span class="card-meta">Rarity: ${escapeHtml(option.rarity)}</span>`;
       card.addEventListener("click", () => chooseReward(index));
+      bindSigilButtons(card, option.card);
       refs.choiceActions.appendChild(card);
     });
     return;
@@ -1970,6 +2061,7 @@ function renderCampfireChoices() {
       button.className = "choice-card card-choice";
       button.innerHTML = formatCardMarkup(card);
       button.addEventListener("click", () => chooseCampfireCard(index));
+      bindSigilButtons(button, card);
       refs.choiceActions.appendChild(button);
     });
     return;
@@ -2001,6 +2093,7 @@ function renderSigilChoices() {
       button.className = "choice-card card-choice";
       button.innerHTML = formatCardMarkup(card);
       button.addEventListener("click", () => chooseSigilDonor(index));
+      bindSigilButtons(button, card);
       refs.choiceActions.appendChild(button);
     });
     return;
@@ -2023,6 +2116,7 @@ function renderSigilChoices() {
     button.className = "choice-card card-choice";
     button.innerHTML = formatCardMarkup(card);
     button.addEventListener("click", () => chooseSigilReceiver(index));
+    bindSigilButtons(button, card);
     refs.choiceActions.appendChild(button);
   });
 }
@@ -2045,6 +2139,7 @@ function renderWoodcarverChoices() {
     button.className = "choice-card card-choice";
     button.innerHTML = formatCardMarkup(card);
     button.addEventListener("click", () => chooseWoodcarverReceiver(index));
+    bindSigilButtons(button, card);
     refs.choiceActions.appendChild(button);
   });
 }
@@ -2073,6 +2168,7 @@ function renderTraderChoices() {
       button.className = "choice-card card-choice";
       button.innerHTML = formatCardMarkup(card);
       button.addEventListener("click", () => chooseTraderSacrifice(index));
+      bindSigilButtons(button, card);
       refs.choiceActions.appendChild(button);
     });
     return;
@@ -2084,6 +2180,7 @@ function renderTraderChoices() {
     button.className = "choice-card card-choice";
     button.innerHTML = `${formatCardMarkup(offer.card)}<span class="card-meta">Trade offer: ${escapeHtml(offer.rarity)}</span>`;
     button.addEventListener("click", () => chooseTraderOffer(index));
+    bindSigilButtons(button, offer.card);
     refs.choiceActions.appendChild(button);
   });
 }
@@ -2137,15 +2234,41 @@ function renderLog() {
   });
 }
 
+function bindSigilButtons(container, card) {
+  if (!card?.sigils?.length) {
+    return;
+  }
+  container.querySelectorAll("[data-sigil]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const sigil = button.dataset.sigil;
+      if (!sigil) {
+        return;
+      }
+      openSigilInspector({ name: card.name, sigils: [sigil] });
+    });
+  });
+}
+
+function getSigilIcon(sigil) {
+  return SIGIL_ICONS[sigil] || "?";
+}
+
+function getCostShortLabel(card) {
+  if (card.cost <= 0) {
+    return "0";
+  }
+  return card.costType === "bones" ? `${card.cost}N` : `${card.cost}B`;
+}
+
 function formatCardMarkup(card) {
-  const sigils = card.sigils.length ? card.sigils.join(", ") : "None";
-  const costLabel = `${card.cost} ${card.costType}`;
-  const primarySigil = card.sigils.length ? SIGIL_META[card.sigils[0]] || card.sigils[0] : "No sigils";
+  const sigilMarkup = card.sigils.length
+    ? `<span class="card-sigil-row">${card.sigils.map((sigil) => `<span class="sigil-badge" data-sigil="${escapeHtml(sigil)}" title="${escapeHtml(sigil)}">${escapeHtml(getSigilIcon(sigil))}</span>`).join("")}</span>`
+    : "";
   return [
-    `<span class="card-name">${escapeHtml(card.name)}</span>`,
-    `<span class="card-stats">Cost ${escapeHtml(costLabel)} | ATK ${card.attack} | HP ${card.health}</span>`,
-    `<span class="card-sigils">Sigils: ${escapeHtml(sigils)}</span>`,
-    `<span class="card-meta">${escapeHtml(primarySigil)}</span>`
+    `<span class="card-header"><span class="card-name">${escapeHtml(card.name)}</span><span class="card-cost">${escapeHtml(getCostShortLabel(card))}</span></span>`,
+    `<span class="card-stats">A${card.attack} H${card.health}</span>`,
+    sigilMarkup
   ].join("");
 }
 

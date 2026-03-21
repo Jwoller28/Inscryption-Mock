@@ -1,5 +1,6 @@
-const SAVE_VERSION = 3;
-const SAVE_KEY = "inscryption-mock-web-save-v3";
+const SAVE_VERSION = 4;
+const SAVE_KEY = "inscryption-mock-web-save-v4";
+const LEGACY_SAVE_KEYS = ["inscryption-mock-web-save-v3"];
 const REGIONS = ["Woodlands", "Wetlands", "Snowline"];
 const NODE_META = {
   BATTLE: { label: "Battle", summary: "Fight for a reward card." },
@@ -600,31 +601,38 @@ function startNewRun() {
 
 function clearSave() {
   window.localStorage.removeItem(SAVE_KEY);
+  LEGACY_SAVE_KEYS.forEach((key) => window.localStorage.removeItem(key));
   startNewRun();
   state.saveStatus = "Reset";
   refs.saveText.textContent = state.saveStatus;
 }
 
 function loadSavedState() {
-  const raw = window.localStorage.getItem(SAVE_KEY);
-  if (!raw) {
+  const activeKey = [SAVE_KEY, ...LEGACY_SAVE_KEYS].find((key) => window.localStorage.getItem(key));
+  if (!activeKey) {
     return false;
   }
+  const raw = window.localStorage.getItem(activeKey);
 
   try {
     const parsed = JSON.parse(raw);
-    if (!parsed || parsed.saveVersion !== SAVE_VERSION) {
-      window.localStorage.removeItem(SAVE_KEY);
+    if (!parsed || ![SAVE_VERSION, SAVE_VERSION - 1].includes(parsed.saveVersion)) {
+      window.localStorage.removeItem(activeKey);
       return false;
     }
     const fresh = createInitialState();
     Object.assign(state, fresh, parsed);
+    state.saveVersion = SAVE_VERSION;
     state.saveStatus = "Loaded";
     normalizeStateAfterLoad();
+    if (activeKey !== SAVE_KEY) {
+      saveState();
+      window.localStorage.removeItem(activeKey);
+    }
     return true;
   } catch (error) {
     console.error("Failed to load save", error);
-    window.localStorage.removeItem(SAVE_KEY);
+    window.localStorage.removeItem(activeKey);
     return false;
   }
 }
@@ -639,11 +647,21 @@ function normalizeStateAfterLoad() {
   state.rewardOptions = Array.isArray(state.rewardOptions) ? state.rewardOptions : [];
   state.tutorial = Object.assign({ dismissed: false }, state.tutorial || {});
   state.meta = Object.assign({ lifetimeRuns: 0, completedRuns: 0, completedBosses: 0, unlockedStarterKeys: ["classic"], activeStarterKey: "classic" }, state.meta || {});
+  state.battle.enemySlots = normalizeEncounterRow(state.battle.enemySlots);
+  state.battle.enemyQueue = normalizeEncounterRow(state.battle.enemyQueue);
+  state.battle.playerSlots = normalizeEncounterRow(state.battle.playerSlots);
+  state.items = state.items.map((item) => copyItem(ITEM_DEFS[item.id] || item));
+  applyMetaUnlockProgress();
   ensureValidUiState("load");
 }
 
 function saveState() {
   window.localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  LEGACY_SAVE_KEYS.forEach((key) => {
+    if (key !== SAVE_KEY) {
+      window.localStorage.removeItem(key);
+    }
+  });
   state.saveStatus = `Saved ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
 }
 
@@ -869,9 +887,10 @@ function normalizeEncounterRow(row = []) {
 }
 
 function getEncounterTier(node) {
-  const regionDepth = node.regionPosition / Math.max(REGIONS.includes(node.region) ? state.map.filter((entry) => entry.region === node.region).length - 1 : 1, 1);
+  const regionNodeCount = state.map.filter((entry) => entry.region === node.region).length;
+  const regionDepth = node.regionPosition / Math.max(regionNodeCount - 1, 1);
   const regionRank = REGIONS.indexOf(node.region);
-  return Math.min(2, Math.floor(regionDepth * 3) + Math.max(regionRank, 0));
+  return Math.min(2, Math.floor(regionDepth * 2.6) + Math.max(regionRank, 0));
 }
 
 function getBossQueueOrder(bossType) {
@@ -1095,10 +1114,10 @@ function getBackpackEventConfig() {
   const progress = getNodeProgress();
   const pool = getRegionItemPool(region);
   return {
-    title: progress > 0.55 ? "Supply Cache" : "Backpack",
-    description: progress > 0.55 ? "A deeper cache lets you pack two tools for the road." : "Choose one tool to bring into the next fights.",
-    picksRemaining: progress > 0.55 ? 2 : 1,
-    options: shuffle(pool).slice(0, progress > 0.55 ? 4 : 3).map(copyItem)
+    title: progress > 0.68 ? "Supply Cache" : "Backpack",
+    description: progress > 0.68 ? "A deeper cache lets you pack two tools for the road." : "Choose one tool to bring into the next fights.",
+    picksRemaining: progress > 0.68 ? 2 : 1,
+    options: shuffle(pool).slice(0, progress > 0.68 ? 4 : 3).map(copyItem)
   };
 }
 
@@ -1115,7 +1134,7 @@ function getRegionItemPool(region) {
 
 function getSigilEventConfig() {
   const progress = getNodeProgress();
-  if (progress > 0.55) {
+  if (progress > 0.65) {
     return {
       key: "echo",
       title: "Echo Stones",
@@ -1149,7 +1168,7 @@ function getWoodcarverConfig() {
 
 function getMycologistConfig() {
   const progress = getNodeProgress();
-  if (progress > 0.55) {
+  if (progress > 0.65) {
     return {
       key: "masterwork",
       title: "Master Mycologists",
@@ -1166,10 +1185,10 @@ function getMycologistConfig() {
 function getTraderConfig() {
   const progress = getNodeProgress();
   return {
-    key: progress > 0.6 ? "lavish" : "standard",
-    title: progress > 0.6 ? "High Trader" : "Trader",
-    description: progress > 0.6 ? "Late traders demand a card first, then reveal premium stock." : "Trade one card away for a curated offer.",
-    offers: [pickRewardCardForTier("Uncommon"), pickRewardCardForTier("Uncommon"), pickRewardCardForTier(progress > 0.6 ? "Rare" : "Uncommon")]
+    key: progress > 0.72 ? "lavish" : "standard",
+    title: progress > 0.72 ? "High Trader" : "Trader",
+    description: progress > 0.72 ? "Late traders demand a card first, then reveal premium stock." : "Trade one card away for a curated offer.",
+    offers: [pickRewardCardForTier("Uncommon"), pickRewardCardForTier("Uncommon"), pickRewardCardForTier(progress > 0.72 ? "Rare" : "Uncommon")]
   };
 }
 
@@ -2218,7 +2237,7 @@ function applyCampfireBuff(kind) {
     card.health += risky ? 3 : 2;
     appendLog(`${card.name} gained ${risky ? 3 : 2} health at the campfire.`);
   }
-  if (risky && Math.random() < 0.28) {
+  if (risky && Math.random() < 0.18) {
     card.health = Math.max(1, card.health - 1);
     appendLog(`${card.name} was singed by the hungry fire and lost 1 health.`);
   }
@@ -2729,28 +2748,6 @@ function getBattleTip() {
   return "Tap a card, then a lane. Tap sigils for details.";
 }
 
-function renderEnemyIntent() {
-  const hint = getEncounterIdentityText();
-  refs.intentCaption.textContent = hint.short;
-  refs.intentPanel.innerHTML = "";
-
-  for (let lane = 0; lane < 4; lane += 1) {
-    const row = document.createElement("div");
-    row.className = "intent-row";
-
-    const label = document.createElement("span");
-    label.className = "intent-lane";
-    label.textContent = `L${lane + 1}`;
-    row.appendChild(label);
-
-    const detail = document.createElement("div");
-    detail.className = "intent-detail";
-    detail.innerHTML = `<strong>${escapeHtml(getLaneIntentLabel(lane))}</strong><span>${escapeHtml(getLaneIntentSubtext(lane))}</span>`;
-    row.appendChild(detail);
-    refs.intentPanel.appendChild(row);
-  }
-}
-
 function renderTutorialPanel() {
   const visible = shouldShowTutorialPanel();
   refs.tutorialPanel.classList.toggle("hidden", !visible);
@@ -2988,185 +2985,6 @@ function triggerHaptics(type) {
   }
 }
 
-function renderAttackPathStage() {
-  const activePreview = getActiveAttackPreview();
-  const projectedEnemyPaths = activePreview ? [] : getProjectedAttackPaths();
-  const projectedPlayerPaths = activePreview || !hasPlayerBoardCards() ? [] : getProjectedAttackPaths("player");
-  refs.attackStageCaption.textContent = activePreview
-    ? `${activePreview.label} in motion`
-    : projectedEnemyPaths.length || projectedPlayerPaths.length
-      ? "Enemy pressure and counter-lines"
-      : "No active attack lines";
-  refs.attackPathStage.className = `attack-path-stage ${getBossStageClass()}`;
-  refs.attackPathStage.innerHTML = buildAttackStageMarkup(activePreview, projectedEnemyPaths, projectedPlayerPaths);
-}
-
-function hasPlayerBoardCards() {
-  return state.battle.playerSlots.some(Boolean);
-}
-
-function getActiveAttackPreview() {
-  if (!uiState.combatPreview) {
-    return null;
-  }
-  const isPlayer = uiState.combatPreview.side === "player";
-  const attackerRow = isPlayer ? state.battle.playerSlots : state.battle.enemySlots;
-  const attacker = attackerRow[uiState.combatPreview.attackerLane];
-  if (!attacker) {
-    return null;
-  }
-  const attackLanes = getAttackLanes(attacker, uiState.combatPreview.attackerLane);
-  return {
-    side: uiState.combatPreview.side,
-    paths: attackLanes.map((targetLane) => ({
-      sourceLane: uiState.combatPreview.attackerLane,
-      targetLane,
-      side: uiState.combatPreview.side,
-      airborne: attacker.sigils.includes("Airborne")
-    })),
-    label: attacker.name
-  };
-}
-
-function getProjectedAttackPaths(side = "enemy") {
-  if (state.mode !== "battle") {
-    return [];
-  }
-  const isEnemy = side === "enemy";
-  if (isEnemy && state.battle.skipEnemyAttackPhase) {
-    return [];
-  }
-  const board = isEnemy ? state.battle.enemySlots : state.battle.playerSlots;
-  const queue = isEnemy ? state.battle.enemyQueue : [null, null, null, null];
-  const paths = [];
-  for (let lane = 0; lane < 4; lane += 1) {
-    const card = board[lane] || queue[lane];
-    if (!card) {
-      continue;
-    }
-    const source = board[lane] ? "board" : "queue";
-    getAttackLanes(card, lane).forEach((targetLane) => {
-      paths.push({
-        sourceLane: lane,
-        targetLane,
-        side,
-        source,
-        airborne: card.sigils.includes("Airborne"),
-        power: getProjectedPowerForPath(card, lane, side)
-      });
-    });
-  }
-  return paths;
-}
-
-function getProjectedPowerForPath(card, lane, side) {
-  if (side === "enemy") {
-    const alliedRow = state.battle.enemySlots.slice();
-    alliedRow[lane] = card;
-    return getAttackPower(card, alliedRow, lane, state.battle.playerSlots, lane);
-  }
-  const alliedRow = state.battle.playerSlots.slice();
-  alliedRow[lane] = card;
-  return getAttackPower(card, alliedRow, lane, state.battle.enemySlots, lane);
-}
-
-function buildAttackStageMarkup(activePreview, projectedEnemyPaths, projectedPlayerPaths) {
-  const xForLane = (lane) => 50 + lane * 100;
-  const enemyPaths = activePreview ? activePreview.paths : projectedEnemyPaths;
-  const playerPaths = activePreview ? [] : projectedPlayerPaths;
-  const pathMarkup = enemyPaths.map((path, index) => renderAttackPath(path, index, xForLane, activePreview ? "active" : "enemy"))
-    .concat(playerPaths.map((path, index) => renderAttackPath(path, index + enemyPaths.length, xForLane, "player")))
-    .join("");
-  const labels = buildAttackStageLegend(activePreview, projectedEnemyPaths, projectedPlayerPaths);
-  return `
-    <svg class="attack-path-svg" viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true">
-      <defs>
-        <marker id="enemy-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-          <path d="M0,0 L8,4 L0,8 z" fill="rgba(207, 107, 84, 0.95)"></path>
-        </marker>
-        <marker id="player-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-          <path d="M0,0 L8,4 L0,8 z" fill="rgba(216, 163, 79, 0.95)"></path>
-        </marker>
-      </defs>
-      <line x1="0" y1="20" x2="400" y2="20" class="attack-stage-rail enemy"></line>
-      <line x1="0" y1="100" x2="400" y2="100" class="attack-stage-rail player"></line>
-      ${pathMarkup}
-    </svg>
-    <div class="attack-stage-legend">${labels}</div>
-  `;
-}
-
-function renderAttackPath(path, index, xForLane, tone) {
-  const fromY = path.side === "enemy" ? (path.source === "queue" ? 8 : 20) : 100;
-  const toY = path.side === "enemy" ? 100 : 20;
-  const marker = path.side === "player" ? "url(#player-arrow)" : "url(#enemy-arrow)";
-  const dash = path.source === "queue" || tone === "enemy" ? "6 5" : "none";
-  const pathClass = `attack-path ${tone} ${path.airborne ? "airborne" : ""} ${tone === "active" ? "active" : ""}`;
-  return `<line class="${pathClass}" x1="${xForLane(path.sourceLane)}" y1="${fromY}" x2="${xForLane(path.targetLane)}" y2="${toY}" marker-end="${marker}" stroke-dasharray="${dash}" style="animation-delay:${index * 60}ms"></line>`;
-}
-
-function buildAttackStageLegend(activePreview, projectedEnemyPaths, projectedPlayerPaths) {
-  const chips = [];
-  if (activePreview) {
-    chips.push(`<span class="attack-chip active">${escapeHtml(activePreview.label)}</span>`);
-  } else {
-    if (projectedEnemyPaths.length) {
-      chips.push(`<span class="attack-chip enemy">${escapeHtml(`Enemy ${projectedEnemyPaths.length} lanes`)}</span>`);
-    }
-    if (projectedPlayerPaths.length) {
-      chips.push(`<span class="attack-chip player">${escapeHtml(`Counter ${projectedPlayerPaths.length} lanes`)}</span>`);
-    }
-  }
-  const lastBossEvent = [...uiState.fxEvents].reverse().find((entry) => entry.type === "boss_phase");
-  if (lastBossEvent) {
-    chips.push(`<span class="attack-chip boss">${escapeHtml(lastBossEvent.payload.label || "Boss setpiece")}</span>`);
-  }
-  return chips.length ? chips.join("") : `<span class="attack-chip neutral">No queued attacks</span>`;
-}
-
-function getBossStageClass() {
-  if (!state.battle.bossType) {
-    return "";
-  }
-  if (state.battle.bossType === "PROSPECTOR") return "boss-prospector";
-  if (state.battle.bossType === "ANGLER") return "boss-angler";
-  if (state.battle.bossType === "TRAPPER_TRADER") return "boss-trader";
-  return "";
-}
-
-function getLaneIntentLabel(lane) {
-  const current = state.battle.enemySlots[lane];
-  const queued = state.battle.enemyQueue[lane];
-  if (state.battle.skipEnemyAttackPhase) {
-    return queued ? `${queued.name} waits in queue` : current ? `${current.name} cannot strike next turn` : "No strike next turn";
-  }
-  if (current) {
-    return `${current.name}: ${describeEnemyAttack(current, lane)}`;
-  }
-  if (queued) {
-    return `${queued.name} enters here`;
-  }
-  return "Open lane";
-}
-
-function getLaneIntentSubtext(lane) {
-  const current = state.battle.enemySlots[lane];
-  const queued = state.battle.enemyQueue[lane];
-  const pieces = [];
-  if (current) {
-    pieces.push(describeThreatTag(current));
-  }
-  if (!current && queued) {
-    pieces.push(describeThreatTag(queued));
-  }
-  if (current && queued) {
-    pieces.push(`Next: ${queued.name}`);
-  } else if (!current && !queued) {
-    pieces.push("No queued creature.");
-  }
-  return pieces.join(" | ");
-}
-
 function getProjectedEnemyTargetLanes() {
   const projected = new Map();
   if (state.mode !== "battle" || state.battle.skipEnemyAttackPhase) {
@@ -3198,66 +3016,6 @@ function getProjectedEnemyAttackPower(card, lane) {
   const alliedRow = state.battle.enemySlots.slice();
   alliedRow[lane] = card;
   return getAttackPower(card, alliedRow, lane, state.battle.playerSlots, lane);
-}
-
-function describeEnemyAttack(card, lane) {
-  const lanes = getAttackLanes(card, lane).map((entry) => entry + 1);
-  const basePower = getAttackPower(card, state.battle.enemySlots, lane, state.battle.playerSlots, lane);
-  const laneText = lanes.length === 1 ? `hits lane ${lanes[0]}` : `hits lanes ${lanes.join("/")}`;
-  const airborneText = card.sigils.includes("Airborne") ? "airborne" : null;
-  return [`${basePower} power`, laneText, airborneText].filter(Boolean).join(", ");
-}
-
-function describeThreatTag(card) {
-  if (card.sigils.includes("Guardian")) return "Guardian";
-  if (card.sigils.includes("Burrower")) return "Burrower";
-  if (card.sigils.includes("Airborne")) return "Airborne";
-  if (card.sigils.includes("Double Strike")) return "Double strike";
-  if (card.sigils.includes("Bifurcated Strike") || card.sigils.includes("Trifurcated Strike")) return "Split attack";
-  return `${card.attack}/${card.health}`;
-}
-
-function renderTurnRecap() {
-  const summary = uiState.lastTurnSummary || uiState.turnSummary || createTurnSummary();
-  refs.turnRecap.innerHTML = "";
-  const lines = buildTurnRecapLines(summary);
-  lines.forEach((lineText) => {
-    const line = document.createElement("div");
-    line.className = "recap-line";
-    line.textContent = lineText;
-    refs.turnRecap.appendChild(line);
-  });
-}
-
-function buildTurnRecapLines(summary) {
-  const lines = [];
-  if (summary.playerDirect > 0) {
-    lines.push(`You dealt ${summary.playerDirect} direct damage.`);
-  }
-  if (summary.enemyDirect > 0) {
-    lines.push(`Enemy dealt ${summary.enemyDirect} direct damage.`);
-  }
-  if (summary.enemyDeaths.length) {
-    lines.push(`Enemy losses: ${formatNameList(summary.enemyDeaths)}.`);
-  }
-  if (summary.playerDeaths.length) {
-    lines.push(`Your losses: ${formatNameList(summary.playerDeaths)}.`);
-  }
-  if (summary.bonesGained > 0) {
-    lines.push(`You gained ${summary.bonesGained} bone${summary.bonesGained === 1 ? "" : "s"}.`);
-  }
-  if (summary.summons.length) {
-    lines.push(`Summons: ${formatNameList(summary.summons)}.`);
-  }
-  if (!lines.length) {
-    lines.push("No resolved turn yet.");
-  }
-  return lines;
-}
-
-function formatNameList(names) {
-  const compact = names.slice(0, 3).join(", ");
-  return names.length > 3 ? `${compact}, +${names.length - 3} more` : compact;
 }
 
 function getEncounterIdentityText() {
@@ -3299,29 +3057,6 @@ function getEncounterIdentityText() {
     return { short: "Snowline elites", long: "Late enemies hit harder and stack premium sigils." };
   }
   return { short: "Reading the next enemy turn", long: "Watch the queue to plan your next block." };
-}
-
-function getSelectionHint() {
-  const selectedCard = getSelectedHandCard();
-  if (state.battle.awaitingDrawChoice) {
-    return "Choose Deck or Squirrel";
-  }
-  if (!selectedCard) {
-    return "Pick a card";
-  }
-
-  if (selectedCard.costType === "bones") {
-    const needed = Math.max(selectedCard.cost - state.battle.playerBones, 0);
-    return needed > 0 ? `${needed} more bones needed` : "Tap an empty lane";
-  }
-
-  if (selectedCard.cost === 0) {
-    return "Tap an empty lane";
-  }
-
-  const selectedValue = getSelectedSacrificeValue();
-  const needed = Math.max(selectedCard.cost - selectedValue, 0);
-  return needed > 0 ? `${needed} blood still needed` : "Tap an empty lane";
 }
 
 function renderLane(container, slots, side, onClick) {

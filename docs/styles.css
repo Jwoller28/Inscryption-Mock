@@ -321,6 +321,7 @@ h3 {
   align-items: center;
   gap: 10px;
   min-height: 0;
+  flex-wrap: wrap;
 }
 
 .phase-chip,
@@ -364,9 +365,29 @@ h3 {
 }
 
 .combat-tip {
+  flex: 1 1 220px;
   color: var(--muted-strong);
   font-size: 0.84rem;
   line-height: 1.35;
+}
+
+.combat-scale-card {
+  position: relative;
+  min-width: 116px;
+  padding: 8px 10px;
+  border: 1px solid rgba(239, 194, 122, 0.16);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at top right, rgba(239, 194, 122, 0.12), transparent 40%),
+    linear-gradient(180deg, rgba(47, 31, 20, 0.92), rgba(20, 16, 13, 0.94));
+  box-shadow: var(--shadow-md);
+}
+
+.combat-scale-card strong {
+  display: block;
+  color: var(--ink);
+  font-size: 1rem;
+  letter-spacing: 0.04em;
 }
 
 .combat-banner {
@@ -473,44 +494,6 @@ h3 {
   background:
     radial-gradient(circle at top center, rgba(109, 155, 116, 0.12), transparent 34%),
     linear-gradient(180deg, rgba(24, 25, 20, 0.96), rgba(14, 12, 10, 0.96));
-}
-
-.battle-footer {
-  display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(180px, 0.85fr);
-  gap: 10px;
-  align-items: stretch;
-}
-
-.encounter-card {
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  background:
-    radial-gradient(circle at top right, rgba(239, 194, 122, 0.12), transparent 36%),
-    linear-gradient(180deg, rgba(42, 31, 22, 0.96), rgba(19, 15, 12, 0.96));
-  box-shadow: var(--shadow-md);
-}
-
-.encounter-card strong {
-  display: block;
-  margin-bottom: 5px;
-  font-size: 1.04rem;
-  color: var(--ink);
-}
-
-.scale-card-inline {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-height: 0;
-  padding: 12px 14px;
-  border-radius: 22px;
-}
-
-.scale-card-inline strong {
-  font-size: 1.35rem;
-  letter-spacing: 0.04em;
 }
 
 .board-scroll {
@@ -1453,11 +1436,6 @@ button:disabled {
     gap: 6px;
   }
 
-  .battle-footer {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
   .status-card {
     min-width: 0;
     min-height: 58px;
@@ -1478,6 +1456,11 @@ button:disabled {
     flex-direction: column;
     align-items: flex-start;
     gap: 6px;
+  }
+
+  .combat-scale-card {
+    min-width: 0;
+    width: 100%;
   }
 
   .phase-chip {

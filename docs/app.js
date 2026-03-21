@@ -369,8 +369,6 @@ const refs = {
   scaleText: document.getElementById("scale-text"),
   scaleFx: document.getElementById("scale-fx"),
   bonesText: document.getElementById("bones-text"),
-  encounterText: document.getElementById("encounter-text"),
-  encounterDetail: document.getElementById("encounter-detail"),
   selectionText: document.getElementById("selection-text"),
   itemCountText: document.getElementById("item-count-text"),
   battlePhaseChip: document.getElementById("battle-phase-chip"),
@@ -2675,9 +2673,6 @@ function renderBattle() {
   refs.bonesText.textContent = String(state.battle.playerBones);
   refs.selectionText.textContent = getSelectedHandCard() ? getSelectedHandCard().name : "None";
   refs.itemCountText.textContent = String(state.items.length);
-  const encounter = getEncounterIdentityText();
-  refs.encounterText.textContent = encounter.short;
-  refs.encounterDetail.textContent = getEncounterDetailText(encounter);
   refs.queueCaption.textContent = state.battle.skipEnemyAttackPhase
     ? "Enemy attack is skipped next turn"
     : state.battle.enemyDeck.length > 0
@@ -3471,24 +3466,6 @@ function renderRunInfo() {
     ${escapeHtml(`Bosses cleared ${state.meta?.completedBosses || 0} | Runs cleared ${state.meta?.completedRuns || 0}`)}<br>
     ${escapeHtml(encounter.long || "Continue the run.")}
   `;
-}
-
-function getEncounterDetailText(encounter) {
-  const parts = [];
-  if (encounter.long) {
-    parts.push(encounter.long);
-  }
-  if (state.battle.skipEnemyAttackPhase) {
-    parts.push("Enemy strike is skipped on the next attack phase.");
-  } else if (state.battle.enemyQueue.some(Boolean)) {
-    parts.push("Queued creatures will drop into matching lanes.");
-  }
-  if (state.battle.awaitingDrawChoice) {
-    parts.push("Start by choosing Deck or Squirrel.");
-  } else if (getSelectedHandCard()) {
-    parts.push(getBattleTip());
-  }
-  return parts.join(" ");
 }
 
 function renderDeck() {

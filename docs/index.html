@@ -68,6 +68,11 @@
           <section class="combat-hud" aria-live="polite">
             <div class="combat-rail">
               <span id="battle-phase-chip" class="phase-chip">Battle Ready</span>
+              <div id="scale-card" class="combat-scale-card">
+                <span class="status-label">Scale</span>
+                <strong id="scale-text">0 | 0</strong>
+                <span id="scale-fx" class="scale-fx hidden" aria-live="polite"></span>
+              </div>
               <p id="battle-tip" class="combat-tip"></p>
             </div>
             <div id="battle-banner" class="combat-banner hidden"></div>
@@ -102,19 +107,6 @@
             </div>
             <div class="board-scroll">
               <div id="player-board" class="lane-grid"></div>
-            </div>
-          </section>
-
-          <section class="battle-footer">
-            <div class="encounter-card">
-              <span class="status-label">Encounter</span>
-              <strong id="encounter-text">Woodlands Skirmish</strong>
-              <p id="encounter-detail" class="section-copy"></p>
-            </div>
-            <div id="scale-card" class="status-card scale-card-inline">
-              <span class="status-label">Scale</span>
-              <strong id="scale-text">0 | 0</strong>
-              <span id="scale-fx" class="scale-fx hidden" aria-live="polite"></span>
             </div>
           </section>
 

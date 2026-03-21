@@ -292,6 +292,119 @@ h3 {
   margin-bottom: 16px;
 }
 
+.path-section {
+  overflow: hidden;
+}
+
+.attack-path-stage {
+  position: relative;
+  margin-top: 10px;
+  border-radius: 16px;
+  min-height: 146px;
+  padding: 10px;
+  background:
+    radial-gradient(circle at center, rgba(216, 163, 79, 0.08), transparent 38%),
+    linear-gradient(180deg, rgba(15, 24, 22, 0.92), rgba(11, 18, 17, 0.92));
+  border: 1px solid rgba(184, 138, 82, 0.16);
+}
+
+.attack-path-stage.boss-prospector {
+  background:
+    radial-gradient(circle at center, rgba(181, 142, 67, 0.14), transparent 38%),
+    linear-gradient(180deg, rgba(34, 28, 20, 0.96), rgba(14, 18, 17, 0.94));
+}
+
+.attack-path-stage.boss-angler {
+  background:
+    radial-gradient(circle at center, rgba(70, 132, 138, 0.14), transparent 38%),
+    linear-gradient(180deg, rgba(14, 27, 31, 0.96), rgba(11, 18, 17, 0.94));
+}
+
+.attack-path-stage.boss-trader {
+  background:
+    radial-gradient(circle at center, rgba(143, 95, 54, 0.14), transparent 38%),
+    linear-gradient(180deg, rgba(30, 20, 18, 0.96), rgba(11, 18, 17, 0.94));
+}
+
+.attack-path-svg {
+  display: block;
+  width: 100%;
+  height: 104px;
+}
+
+.attack-stage-rail {
+  stroke-width: 2;
+  stroke: rgba(184, 138, 82, 0.22);
+}
+
+.attack-stage-rail.enemy {
+  stroke: rgba(207, 107, 84, 0.22);
+}
+
+.attack-stage-rail.player {
+  stroke: rgba(216, 163, 79, 0.22);
+}
+
+.attack-path {
+  fill: none;
+  stroke-width: 3.5;
+  opacity: 0.9;
+  animation: attack-draw 0.68s ease forwards;
+}
+
+.attack-path.enemy {
+  stroke: rgba(207, 107, 84, 0.62);
+}
+
+.attack-path.player {
+  stroke: rgba(216, 163, 79, 0.56);
+}
+
+.attack-path.active {
+  stroke-width: 5;
+  stroke: rgba(241, 234, 217, 0.9);
+}
+
+.attack-path.airborne {
+  stroke-dasharray: 4 6 !important;
+}
+
+.attack-stage-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.attack-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: var(--text);
+  font: 700 0.68rem/1 "Trebuchet MS", sans-serif;
+}
+
+.attack-chip.enemy {
+  background: rgba(207, 107, 84, 0.2);
+}
+
+.attack-chip.player {
+  background: rgba(216, 163, 79, 0.18);
+}
+
+.attack-chip.active {
+  background: rgba(241, 234, 217, 0.18);
+}
+
+.attack-chip.boss {
+  background: rgba(115, 96, 58, 0.28);
+}
+
+.attack-chip.neutral {
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .tutorial-panel {
   margin-bottom: 16px;
 }
@@ -515,15 +628,24 @@ h3 {
 
 .slot-card.lane-effect-hit {
   filter: saturate(1.06) brightness(1.02);
+  animation: impact-hit 0.42s ease;
 }
 
 .slot-card.lane-effect-death {
   filter: grayscale(0.18) brightness(0.92);
+  animation: impact-death 0.64s ease;
 }
 
 .slot-card.lane-effect-attack,
 .slot-card.lane-effect-direct {
   transform: translateY(-2px);
+  animation: impact-lunge 0.32s ease;
+}
+
+.slot-card.lane-effect-block,
+.slot-card.lane-effect-move,
+.slot-card.lane-effect-spawn {
+  animation: impact-hit 0.4s ease;
 }
 
 .card-header,
@@ -1066,6 +1188,61 @@ button:disabled {
   }
 }
 
+@keyframes attack-draw {
+  0% {
+    opacity: 0;
+    stroke-dasharray: 2 18;
+    stroke-dashoffset: 18;
+  }
+  100% {
+    opacity: 1;
+    stroke-dasharray: 12 0;
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes impact-hit {
+  0% {
+    filter: brightness(1);
+    transform: scale(1);
+  }
+  35% {
+    filter: brightness(1.18);
+    transform: scale(1.02);
+  }
+  100% {
+    filter: brightness(1);
+    transform: scale(1);
+  }
+}
+
+@keyframes impact-lunge {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+  100% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes impact-death {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  45% {
+    opacity: 0.9;
+    transform: scale(0.98) rotate(-1deg);
+  }
+  100% {
+    opacity: 0.72;
+    transform: scale(0.94);
+  }
+}
+
 @keyframes scale-ring {
   0% {
     opacity: 0.8;
@@ -1329,6 +1506,19 @@ button:disabled {
 
   .tutorial-grid {
     grid-template-columns: 1fr;
+  }
+
+  .attack-path-stage {
+    min-height: 128px;
+    padding: 8px;
+  }
+
+  .attack-path-svg {
+    height: 88px;
+  }
+
+  .attack-chip {
+    font-size: 0.62rem;
   }
 
   .insight-card {

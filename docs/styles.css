@@ -292,6 +292,46 @@ h3 {
   margin-bottom: 16px;
 }
 
+.tutorial-panel {
+  margin-bottom: 16px;
+}
+
+.tutorial-card {
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(120, 93, 47, 0.16);
+  border: 1px solid rgba(216, 163, 79, 0.22);
+}
+
+.tutorial-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.tutorial-tip {
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: rgba(20, 34, 31, 0.62);
+}
+
+.tutorial-tip strong,
+.tutorial-tip span {
+  display: block;
+}
+
+.tutorial-tip strong {
+  color: var(--text);
+  font: 700 0.82rem/1.2 "Trebuchet MS", sans-serif;
+}
+
+.tutorial-tip span {
+  margin-top: 4px;
+  color: var(--muted);
+  font: 0.78rem/1.35 "Trebuchet MS", sans-serif;
+}
+
 .insight-card {
   padding: 12px;
   border-radius: 16px;
@@ -455,6 +495,14 @@ h3 {
   box-shadow: 0 0 0 3px rgba(207, 107, 84, 0.95), inset 0 0 0 1px rgba(82, 49, 25, 0.7);
 }
 
+.slot-card.intent-targeted {
+  box-shadow: 0 0 0 3px rgba(207, 107, 84, 0.54), inset 0 0 0 1px rgba(82, 49, 25, 0.7);
+}
+
+.slot-card.queue-entry-slot {
+  box-shadow: 0 0 0 2px rgba(216, 163, 79, 0.42), inset 0 0 0 1px rgba(82, 49, 25, 0.7);
+}
+
 .slot-card.lane-effect-hit,
 .slot-card.lane-effect-direct,
 .slot-card.lane-effect-death,
@@ -537,6 +585,56 @@ h3 {
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
   pointer-events: none;
   animation: lane-float 0.9s ease forwards;
+}
+
+.intent-badge,
+.queue-entry-badge,
+.intent-path {
+  position: absolute;
+  left: 6px;
+  z-index: 1;
+  max-width: calc(100% - 12px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.intent-badge,
+.queue-entry-badge {
+  top: 6px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: var(--text);
+  font: 700 0.66rem/1 "Trebuchet MS", sans-serif;
+}
+
+.intent-badge.incoming {
+  background: rgba(153, 61, 51, 0.82);
+}
+
+.intent-badge.queued {
+  background: rgba(164, 111, 37, 0.86);
+}
+
+.queue-entry-badge {
+  background: rgba(55, 105, 83, 0.84);
+}
+
+.queue-entry-badge.entry-arrow {
+  left: auto;
+  right: 6px;
+  background: rgba(216, 163, 79, 0.22);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px rgba(216, 163, 79, 0.22);
+}
+
+.intent-path {
+  bottom: 6px;
+  padding: 2px 0;
+  color: rgba(241, 234, 217, 0.88);
+  font: 700 0.6rem/1.1 "Trebuchet MS", sans-serif;
+  letter-spacing: 0.03em;
 }
 
 .lane-fx-hit,
@@ -1225,6 +1323,14 @@ button:disabled {
     margin-bottom: 12px;
   }
 
+  .tutorial-panel {
+    margin-bottom: 12px;
+  }
+
+  .tutorial-grid {
+    grid-template-columns: 1fr;
+  }
+
   .insight-card {
     padding: 10px;
   }
@@ -1236,6 +1342,17 @@ button:disabled {
   .intent-detail span,
   .recap-line {
     font-size: 0.74rem;
+  }
+
+  .tutorial-tip strong {
+    font-size: 0.76rem;
+  }
+
+  .tutorial-tip span,
+  .intent-badge,
+  .queue-entry-badge,
+  .intent-path {
+    font-size: 0.64rem;
   }
 
   .section-head {

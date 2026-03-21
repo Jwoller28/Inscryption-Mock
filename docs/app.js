@@ -200,6 +200,7 @@ const refs = {
   battlePhaseChip: document.getElementById("battle-phase-chip"),
   battleTip: document.getElementById("battle-tip"),
   battleBanner: document.getElementById("battle-banner"),
+  tutorialPanel: document.getElementById("tutorial-panel"),
   intentCaption: document.getElementById("intent-caption"),
   intentPanel: document.getElementById("intent-panel"),
   turnRecap: document.getElementById("turn-recap"),
@@ -273,7 +274,10 @@ function createInitialState() {
     selection: createSelectionState(),
     rewardOptions: [],
     eventState: null,
-    log: []
+    log: [],
+    tutorial: {
+      dismissed: false
+    }
   };
 }
 
@@ -379,6 +383,7 @@ function normalizeStateAfterLoad() {
   state.currentDeck = Array.isArray(state.currentDeck) ? state.currentDeck : [];
   state.map = Array.isArray(state.map) ? state.map : [];
   state.rewardOptions = Array.isArray(state.rewardOptions) ? state.rewardOptions : [];
+  state.tutorial = Object.assign({ dismissed: false }, state.tutorial || {});
   ensureValidUiState("load");
 }
 
@@ -1384,13 +1389,37 @@ function drawPlayerCard() {
 }
 
 function fillEnemyQueue() {
-  for (let i = 0; i < state.battle.enemyQueue.length; i += 1) {
-    if (!state.battle.enemyQueue[i] && state.battle.enemyDeck.length > 0) {
+  const laneOrder = getPreferredEnemyQueueOrder();
+  for (const lane of laneOrder) {
+    if (!state.battle.enemyQueue[lane] && state.battle.enemyDeck.length > 0) {
       const card = state.battle.enemyDeck.shift();
-      state.battle.enemyQueue[i] = card;
-      appendLog(`Enemy queued ${card.name}.`);
+      state.battle.enemyQueue[lane] = card;
+      appendLog(`Enemy queued ${card.name} for lane ${lane + 1}.`);
     }
   }
+}
+
+function getPreferredEnemyQueueOrder() {
+  if (state.battle.bossType === "PROSPECTOR") {
+    return [1, 2, 0, 3];
+  }
+  if (state.battle.bossType === "ANGLER") {
+    return [0, 3, 1, 2];
+  }
+  if (state.battle.bossType === "TRAPPER_TRADER") {
+    return [0, 2, 1, 3];
+  }
+  const region = getCurrentNode()?.region;
+  if (region === "Woodlands") {
+    return [1, 2, 0, 3];
+  }
+  if (region === "Wetlands") {
+    return [0, 3, 1, 2];
+  }
+  if (region === "Snowline") {
+    return [0, 2, 1, 3];
+  }
+  return [0, 1, 2, 3];
 }
 
 function useItem(itemId) {
@@ -2136,6 +2165,7 @@ function renderBattle() {
       ? `${state.battle.enemyDeck.length} cards left in enemy deck`
       : "Enemy deck empty";
   renderCombatHud();
+  renderTutorialPanel();
   renderEnemyIntent();
   renderTurnRecap();
 
@@ -2223,6 +2253,47 @@ function renderEnemyIntent() {
   }
 }
 
+function renderTutorialPanel() {
+  const visible = shouldShowTutorialPanel();
+  refs.tutorialPanel.classList.toggle("hidden", !visible);
+  if (!visible) {
+    refs.tutorialPanel.innerHTML = "";
+    return;
+  }
+
+  refs.tutorialPanel.innerHTML = `
+    <div class="tutorial-card">
+      <div class="section-head">
+        <h3>How This Battle Works</h3>
+        <button id="dismiss-tutorial-button" class="ghost-button" type="button">Hide</button>
+      </div>
+      <div class="tutorial-grid">
+        <div class="tutorial-tip"><strong>1. Draw first</strong><span>Each turn starts with Deck or Squirrel.</span></div>
+        <div class="tutorial-tip"><strong>2. Pay costs</strong><span>Blood cards need sacrifices. Bone cards spend bones.</span></div>
+        <div class="tutorial-tip"><strong>3. Read the board</strong><span>Red target markers show enemy pressure. Queue cards show where they will enter.</span></div>
+      </div>
+    </div>
+  `;
+
+  const dismissButton = document.getElementById("dismiss-tutorial-button");
+  if (dismissButton) {
+    dismissButton.addEventListener("click", dismissTutorialPanel);
+  }
+}
+
+function shouldShowTutorialPanel() {
+  return state.mode === "battle"
+    && !state.tutorial.dismissed
+    && state.runNumber === 1
+    && state.currentNodeIndex === 0
+    && state.currentRound <= 2;
+}
+
+function dismissTutorialPanel() {
+  state.tutorial.dismissed = true;
+  render();
+}
+
 function getLaneIntentLabel(lane) {
   const current = state.battle.enemySlots[lane];
   const queued = state.battle.enemyQueue[lane];
@@ -2254,6 +2325,39 @@ function getLaneIntentSubtext(lane) {
     pieces.push("No queued creature.");
   }
   return pieces.join(" | ");
+}
+
+function getProjectedEnemyTargetLanes() {
+  const projected = new Map();
+  if (state.mode !== "battle" || state.battle.skipEnemyAttackPhase) {
+    return projected;
+  }
+
+  for (let lane = 0; lane < 4; lane += 1) {
+    const attacker = state.battle.enemySlots[lane] || state.battle.enemyQueue[lane];
+    if (!attacker) {
+      continue;
+    }
+    const source = state.battle.enemySlots[lane] ? "board" : "queue";
+    const lanes = getAttackLanes(attacker, lane);
+    lanes.forEach((targetLane) => {
+      const entries = projected.get(targetLane) || [];
+      entries.push({
+        name: attacker.name,
+        power: getProjectedEnemyAttackPower(attacker, lane),
+        source,
+        airborne: attacker.sigils.includes("Airborne")
+      });
+      projected.set(targetLane, entries);
+    });
+  }
+  return projected;
+}
+
+function getProjectedEnemyAttackPower(card, lane) {
+  const alliedRow = state.battle.enemySlots.slice();
+  alliedRow[lane] = card;
+  return getAttackPower(card, alliedRow, lane, state.battle.playerSlots, lane);
 }
 
 function describeEnemyAttack(card, lane) {
@@ -2376,10 +2480,12 @@ function getSelectionHint() {
 
 function renderLane(container, slots, side, onClick) {
   container.innerHTML = "";
+  const projectedTargets = side === "player" ? getProjectedEnemyTargetLanes() : null;
   slots.forEach((card, index) => {
     const button = document.createElement("button");
     button.className = `slot-card ${side} ${card ? "" : "empty"} ${onClick ? "selectable" : ""}`;
     const laneEffect = getLaneEffect(side, index);
+    const targetPressure = projectedTargets ? projectedTargets.get(index) : null;
     if (side === "player" && canPlaceOnSlot(index)) {
       button.classList.add("targetable");
     }
@@ -2392,10 +2498,17 @@ function renderLane(container, slots, side, onClick) {
     if (uiState.combatPreview && uiState.combatPreview.side !== side && uiState.combatPreview.targetLane === index) {
       button.classList.add("combat-target");
     }
+    if (targetPressure?.length) {
+      button.classList.add("intent-targeted");
+    }
+    if (side === "enemy" && !card && state.battle.enemyQueue[index] && container === refs.enemyBoard) {
+      button.classList.add("queue-entry-slot");
+    }
+    const intentMarkup = getLaneOverlayMarkup(side, index, card, targetPressure, container);
     if (laneEffect) {
       button.classList.add(`lane-effect-${laneEffect.tone}`);
     }
-    button.innerHTML = `${card ? formatCardMarkup(card) : `<span class="empty-caption">${side === "player" ? "Empty" : "None"}</span>`}${laneEffect ? `<span class="lane-fx lane-fx-${escapeHtml(laneEffect.tone)}">${escapeHtml(laneEffect.text)}</span>` : ""}`;
+    button.innerHTML = `${card ? formatCardMarkup(card) : `<span class="empty-caption">${side === "player" ? "Empty" : "None"}</span>`}${intentMarkup}${laneEffect ? `<span class="lane-fx lane-fx-${escapeHtml(laneEffect.tone)}">${escapeHtml(laneEffect.text)}</span>` : ""}`;
     if (onClick) {
       button.addEventListener("click", () => {
         if (card && card.sigils?.length && !getSelectedHandCard()) {
@@ -2413,6 +2526,37 @@ function renderLane(container, slots, side, onClick) {
     bindSigilButtons(button, card);
     container.appendChild(button);
   });
+}
+
+function getLaneOverlayMarkup(side, index, card, targetPressure, container) {
+  const overlays = [];
+  if (side === "player" && targetPressure?.length) {
+    const boardPower = targetPressure
+      .filter((entry) => entry.source === "board")
+      .reduce((sum, entry) => sum + Math.max(entry.power, 0), 0);
+    const queuePower = targetPressure
+      .filter((entry) => entry.source === "queue")
+      .reduce((sum, entry) => sum + Math.max(entry.power, 0), 0);
+    if (boardPower > 0) {
+      overlays.push(`<span class="intent-badge incoming">${escapeHtml(`Hit ${boardPower}`)}</span>`);
+    } else if (queuePower > 0) {
+      overlays.push(`<span class="intent-badge queued">${escapeHtml(`Next ${queuePower}`)}</span>`);
+    }
+    if (queuePower > 0 && boardPower > 0) {
+      overlays.push(`<span class="queue-entry-badge entry-arrow">${escapeHtml(`Next ${queuePower}`)}</span>`);
+    }
+    overlays.push(`<span class="intent-path">${escapeHtml(targetPressure.map((entry) => `${entry.name} ${entry.airborne ? "flies" : "aims"}`).slice(0, 2).join(" | "))}</span>`);
+  }
+
+  if (side === "enemy" && container === refs.enemyQueue && card) {
+    overlays.push(`<span class="queue-entry-badge">${escapeHtml(`To lane ${index + 1}`)}</span>`);
+  }
+
+  if (side === "enemy" && container === refs.enemyBoard && !card && state.battle.enemyQueue[index]) {
+    overlays.push(`<span class="queue-entry-badge entry-arrow">${escapeHtml(`<- ${state.battle.enemyQueue[index].name}`)}</span>`);
+  }
+
+  return overlays.join("");
 }
 
 function renderHand() {

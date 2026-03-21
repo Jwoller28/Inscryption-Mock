@@ -10,82 +10,128 @@
   <div class="app-shell">
     <header class="topbar">
       <div>
-        <p class="eyebrow">GitHub Pages Prototype</p>
+        <p class="eyebrow">Web Run Prototype</p>
         <h1>Inscryption Mock</h1>
       </div>
       <div class="topbar-actions">
         <button id="new-run-button" class="secondary-button">New Run</button>
+        <button id="clear-save-button" class="ghost-button">Clear Save</button>
         <button id="end-turn-button" class="primary-button">End Turn</button>
       </div>
     </header>
 
+    <div class="banner-row">
+      <div class="banner-card">
+        <span class="status-label">Screen</span>
+        <strong id="screen-text">Battle</strong>
+      </div>
+      <div class="banner-card">
+        <span class="status-label">Region</span>
+        <strong id="region-text">Woodlands</strong>
+      </div>
+      <div class="banner-card">
+        <span class="status-label">Progress</span>
+        <strong id="progress-text">Node 1</strong>
+      </div>
+      <div class="banner-card">
+        <span class="status-label">Save</span>
+        <strong id="save-text">Ready</strong>
+      </div>
+    </div>
+
     <main class="layout">
-      <section class="board-panel panel">
-        <div class="status-row">
-          <div class="status-card">
-            <span class="status-label">Scale</span>
-            <strong id="scale-text">0 | 0</strong>
-          </div>
-          <div class="status-card">
-            <span class="status-label">Bones</span>
-            <strong id="bones-text">0</strong>
-          </div>
-          <div class="status-card">
-            <span class="status-label">Selection</span>
-            <strong id="selection-text">None</strong>
+      <section class="primary-panel panel">
+        <div class="section-head section-head-large">
+          <div>
+            <h2 id="screen-title">Battle</h2>
+            <p id="screen-subtitle" class="section-copy"></p>
           </div>
         </div>
 
-        <section class="board-section">
-          <div class="section-head">
-            <h2>Enemy Queue</h2>
-            <span id="queue-caption">Incoming cards</span>
+        <section id="battle-view">
+          <div class="status-row">
+            <div class="status-card">
+              <span class="status-label">Scale</span>
+              <strong id="scale-text">0 | 0</strong>
+            </div>
+            <div class="status-card">
+              <span class="status-label">Bones</span>
+              <strong id="bones-text">0</strong>
+            </div>
+            <div class="status-card">
+              <span class="status-label">Selection</span>
+              <strong id="selection-text">None</strong>
+            </div>
+            <div class="status-card">
+              <span class="status-label">Items</span>
+              <strong id="item-count-text">0</strong>
+            </div>
           </div>
-          <div id="enemy-queue" class="lane-grid"></div>
+
+          <section class="board-section">
+            <div class="section-head">
+              <h3>Items</h3>
+              <span>Tap once per battle item to use it</span>
+            </div>
+            <div id="item-bar" class="item-bar"></div>
+          </section>
+
+          <section class="board-section">
+            <div class="section-head">
+              <h3>Enemy Queue</h3>
+              <span id="queue-caption">Incoming cards</span>
+            </div>
+            <div id="enemy-queue" class="lane-grid"></div>
+          </section>
+
+          <section class="board-section">
+            <div class="section-head">
+              <h3>Enemy Board</h3>
+              <span>Top row</span>
+            </div>
+            <div id="enemy-board" class="lane-grid"></div>
+          </section>
+
+          <section class="board-section">
+            <div class="section-head">
+              <h3>Your Board</h3>
+              <span>Tap a card, then tap a lane</span>
+            </div>
+            <div id="player-board" class="lane-grid"></div>
+          </section>
+
+          <section class="hand-panel">
+            <div class="section-head">
+              <h3>Your Hand</h3>
+              <span>Hand scrolls horizontally on mobile</span>
+            </div>
+            <div id="hand-strip" class="hand-strip"></div>
+          </section>
         </section>
 
-        <section class="board-section">
-          <div class="section-head">
-            <h2>Enemy Board</h2>
-            <span>Top row</span>
-          </div>
-          <div id="enemy-board" class="lane-grid"></div>
-        </section>
-
-        <section class="board-section">
-          <div class="section-head">
-            <h2>Your Board</h2>
-            <span>Tap a card to mark it for sacrifice</span>
-          </div>
-          <div id="player-board" class="lane-grid"></div>
+        <section id="choice-view" class="hidden">
+          <div id="choice-summary" class="choice-summary"></div>
+          <div id="choice-actions" class="choice-actions"></div>
         </section>
       </section>
 
       <aside class="side-panel panel">
         <section class="info-block">
-          <h2>Run</h2>
+          <h3>Run</h3>
           <p id="run-text"></p>
         </section>
 
         <section class="info-block">
-          <h2>What Changed</h2>
-          <p>This browser version uses a mobile-first board, a horizontally scrolling hand, and inline overlays instead of JavaFX windows.</p>
+          <h3>Deck</h3>
+          <div id="deck-panel" class="deck-panel"></div>
         </section>
 
         <section class="info-block">
-          <h2>Log</h2>
+          <h3>Log</h3>
           <div id="log-panel" class="log-panel"></div>
         </section>
       </aside>
     </main>
-
-    <section class="hand-panel panel">
-      <div class="section-head">
-        <h2>Your Hand</h2>
-        <span>Tap a card, then tap a lane</span>
-      </div>
-      <div id="hand-strip" class="hand-strip"></div>
-    </section>
   </div>
 
   <script src="./app.js"></script>

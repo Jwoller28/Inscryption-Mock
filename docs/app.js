@@ -133,6 +133,7 @@ const refs = {
   choiceModal: document.getElementById("choice-modal"),
   choiceView: document.getElementById("choice-view"),
   choiceTitle: document.getElementById("choice-title"),
+  closeChoiceButton: document.getElementById("close-choice-button"),
   choiceSummary: document.getElementById("choice-summary"),
   choiceActions: document.getElementById("choice-actions"),
   scaleText: document.getElementById("scale-text"),
@@ -162,6 +163,7 @@ refs.newRunButton.addEventListener("click", startNewRun);
 refs.clearSaveButton.addEventListener("click", clearSave);
 refs.drawSquirrelButton.addEventListener("click", () => chooseDraw("squirrel"));
 refs.drawDeckButton.addEventListener("click", () => chooseDraw("deck"));
+refs.closeChoiceButton.addEventListener("click", forceCloseModal);
 window.addEventListener("resize", updateOrientationPrompt);
 window.addEventListener("orientationchange", updateOrientationPrompt);
 
@@ -1531,6 +1533,15 @@ function updateOrientationPrompt() {
   const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
   const shouldShow = isPhoneLike && isPortrait && isStandalone;
   refs.rotateOverlay.classList.toggle("hidden", !shouldShow);
+}
+
+function forceCloseModal() {
+  if (state.mode === "battle") {
+    return;
+  }
+  state.mode = "battle";
+  state.currentScreen = state.battle.nodeType === "BOSS" ? "Boss Battle" : "Battle";
+  render();
 }
 
 function renderMeta() {

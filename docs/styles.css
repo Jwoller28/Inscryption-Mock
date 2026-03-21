@@ -342,6 +342,7 @@ h3 {
     radial-gradient(circle at top right, rgba(202, 143, 59, 0.16), transparent 24%),
     linear-gradient(180deg, rgba(23, 37, 34, 0.98), rgba(14, 23, 20, 0.98));
   box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
 }
 
 .choice-dialog-head {

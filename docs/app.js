@@ -152,7 +152,9 @@ const CARD_LIBRARY = {
 const state = createInitialState();
 const uiState = {
   mobileInfoPanel: "run",
-  sigilInspector: null
+  sigilInspector: null,
+  turnAnimating: false,
+  combatPreview: null
 };
 const refs = {
   screenText: document.getElementById("screen-text"),
@@ -751,8 +753,11 @@ function showTraderEvent() {
   render();
 }
 
-function endTurn() {
+async function endTurn() {
   if (state.mode !== "battle") {
+    return;
+  }
+  if (uiState.turnAnimating) {
     return;
   }
   if (state.battle.awaitingDrawChoice) {
@@ -761,38 +766,50 @@ function endTurn() {
     return;
   }
 
-  appendLog("Player attacks.");
-  tickTurns(state.battle.playerSlots);
-  for (let lane = 0; lane < 4; lane += 1) {
-    resolveAttackLane(state.battle.playerSlots, state.battle.enemySlots, lane, true);
-  }
-  if (checkBattleEnd()) {
-    return;
-  }
-
-  if (state.battle.skipEnemyAttackPhase) {
-    state.battle.skipEnemyAttackPhase = false;
-    appendLog("Hourglass stopped the enemy attack.");
-  } else {
-    appendLog("Enemy attacks.");
-    tickTurns(state.battle.enemySlots);
-    for (let lane = 0; lane < 4; lane += 1) {
-      resolveAttackLane(state.battle.enemySlots, state.battle.playerSlots, lane, false);
-    }
-  }
-  if (checkBattleEnd()) {
-    return;
-  }
-
-  if (state.battle.bossType === "ANGLER" && state.battle.bossPhase === 1 && !state.battle.anglerHookUsed) {
-    performAnglerHook();
-  }
-
-  advanceEnemyBoard();
-  state.battle.awaitingDrawChoice = true;
-  state.battle.playerAirborneTurns = Math.max(0, state.battle.playerAirborneTurns - 1);
-  state.selection = createSelectionState();
+  uiState.turnAnimating = true;
   render();
+  try {
+    appendLog("Player attacks.");
+    tickTurns(state.battle.playerSlots);
+    await pauseBattleAction();
+    for (let lane = 0; lane < 4; lane += 1) {
+      await resolveAttackLane(state.battle.playerSlots, state.battle.enemySlots, lane, true);
+    }
+    if (checkBattleEnd()) {
+      return;
+    }
+
+    if (state.battle.skipEnemyAttackPhase) {
+      state.battle.skipEnemyAttackPhase = false;
+      appendLog("Hourglass stopped the enemy attack.");
+      await pauseBattleAction();
+    } else {
+      appendLog("Enemy attacks.");
+      tickTurns(state.battle.enemySlots);
+      await pauseBattleAction();
+      for (let lane = 0; lane < 4; lane += 1) {
+        await resolveAttackLane(state.battle.enemySlots, state.battle.playerSlots, lane, false);
+      }
+    }
+    if (checkBattleEnd()) {
+      return;
+    }
+
+    if (state.battle.bossType === "ANGLER" && state.battle.bossPhase === 1 && !state.battle.anglerHookUsed) {
+      performAnglerHook();
+      await pauseBattleAction();
+    }
+
+    advanceEnemyBoard();
+    state.battle.awaitingDrawChoice = true;
+    state.battle.playerAirborneTurns = Math.max(0, state.battle.playerAirborneTurns - 1);
+    state.selection = createSelectionState();
+    await pauseBattleAction();
+  } finally {
+    uiState.turnAnimating = false;
+    uiState.combatPreview = null;
+    render();
+  }
 }
 
 function performAnglerHook() {
@@ -841,21 +858,21 @@ function evolveCard(slots, index) {
   appendLog(`${card.name} has grown.`);
 }
 
-function resolveAttackLane(attackingRow, defendingRow, lane, isPlayer) {
+async function resolveAttackLane(attackingRow, defendingRow, lane, isPlayer) {
   const attacker = attackingRow[lane];
   if (!attacker) {
     return;
   }
   const attackLanes = getAttackLanes(attacker, lane);
   const strikes = attacker.sigils.includes("Double Strike") ? 2 : 1;
-  attackLanes.forEach((targetLane) => {
+  for (const targetLane of attackLanes) {
     for (let hit = 0; hit < strikes; hit += 1) {
       if (!attackingRow[lane]) {
         break;
       }
-      singleStrike(attackingRow, defendingRow, lane, targetLane, isPlayer);
+      await singleStrike(attackingRow, defendingRow, lane, targetLane, isPlayer);
     }
-  });
+  }
 }
 
 function getAttackLanes(attacker, lane) {
@@ -868,11 +885,19 @@ function getAttackLanes(attacker, lane) {
   return [lane];
 }
 
-function singleStrike(attackingRow, defendingRow, attackerLane, targetLane, isPlayer) {
+async function singleStrike(attackingRow, defendingRow, attackerLane, targetLane, isPlayer) {
   const attacker = attackingRow[attackerLane];
   if (!attacker) {
     return;
   }
+
+  uiState.combatPreview = {
+    side: isPlayer ? "player" : "enemy",
+    attackerLane,
+    targetLane
+  };
+  render();
+  await sleep(280);
 
   const airborne = attacker.sigils.includes("Airborne") || (isPlayer && state.battle.playerAirborneTurns > 0);
   const defenderLane = resolveDefenderLane(defendingRow, targetLane, airborne);
@@ -884,6 +909,7 @@ function singleStrike(attackingRow, defendingRow, attackerLane, targetLane, isPl
 
   if (attackPower <= 0) {
     appendLog(`${attacker.name} could not deal damage.`);
+    await pauseBattleAction();
     return;
   }
 
@@ -895,10 +921,12 @@ function singleStrike(attackingRow, defendingRow, attackerLane, targetLane, isPl
       state.battle.enemyDamage += attackPower;
       appendLog(`${attacker.name} dealt ${attackPower} direct damage.`);
     }
+    await pauseBattleAction();
     return;
   }
 
   dealCombatDamage(attackingRow, defendingRow, attackerLane, defenderLane, attackPower, isPlayer);
+  await pauseBattleAction();
 }
 
 function resolveDefenderLane(defendingRow, targetLane, airborne) {
@@ -1264,6 +1292,9 @@ function chooseDraw(kind) {
   if (state.mode !== "battle" || !state.battle.awaitingDrawChoice) {
     return;
   }
+  if (uiState.turnAnimating) {
+    return;
+  }
 
   if (kind === "squirrel") {
     state.battle.hand.push(createLibraryCard("squirrel"));
@@ -1303,6 +1334,9 @@ function useItem(itemId) {
   if (state.mode !== "battle") {
     return;
   }
+  if (uiState.turnAnimating) {
+    return;
+  }
 
   const item = state.items.find((entry) => entry.id === itemId);
   if (!item) {
@@ -1340,6 +1374,9 @@ function getSelectedHandCard() {
 }
 
 function selectHandCard(index) {
+  if (uiState.turnAnimating) {
+    return;
+  }
   state.selection.selectedHandIndex = index;
   state.selection.selectedSacrificeIndexes = [];
   appendLog(`Selected ${state.battle.hand[index].name}.`);
@@ -1347,6 +1384,9 @@ function selectHandCard(index) {
 }
 
 function onPlayerSlotClick(index) {
+  if (uiState.turnAnimating) {
+    return;
+  }
   if (state.battle.awaitingDrawChoice) {
     appendLog("Choose your draw first.");
     return;
@@ -1398,6 +1438,9 @@ function onPlayerSlotClick(index) {
 }
 
 function toggleSacrifice(index) {
+  if (uiState.turnAnimating) {
+    return;
+  }
   const selectedCard = getSelectedHandCard();
   if (!selectedCard || selectedCard.costType !== "blood" || selectedCard.cost === 0) {
     appendLog("No sacrifices needed.");
@@ -1736,7 +1779,7 @@ function render() {
   renderInfoPanels();
   renderSigilInspector();
   renderDrawModal();
-  refs.endTurnButton.disabled = state.mode !== "battle";
+  refs.endTurnButton.disabled = state.mode !== "battle" || uiState.turnAnimating;
 }
 
 function setMobileInfoPanel(panel) {
@@ -1822,8 +1865,8 @@ function renderDrawModal() {
   refs.drawModal.setAttribute("aria-hidden", String(!active));
   refs.drawModal.inert = !active;
   refs.drawCaption.textContent = active ? "Choose how to start your turn." : "";
-  refs.drawSquirrelButton.disabled = !active;
-  refs.drawDeckButton.disabled = !active;
+  refs.drawSquirrelButton.disabled = !active || uiState.turnAnimating;
+  refs.drawDeckButton.disabled = !active || uiState.turnAnimating;
 }
 
 function renderMeta() {
@@ -1910,6 +1953,12 @@ function renderLane(container, slots, side, onClick) {
     }
     if (side === "player" && state.selection.selectedSacrificeIndexes.includes(index)) {
       button.classList.add("sacrifice-selected");
+    }
+    if (uiState.combatPreview && uiState.combatPreview.side === side && uiState.combatPreview.attackerLane === index) {
+      button.classList.add("combat-attacker");
+    }
+    if (uiState.combatPreview && uiState.combatPreview.side !== side && uiState.combatPreview.targetLane === index) {
+      button.classList.add("combat-target");
     }
     button.innerHTML = card ? formatCardMarkup(card) : `<span class="empty-caption">${side === "player" ? "Empty" : "None"}</span>`;
     if (onClick) {
@@ -2276,6 +2325,15 @@ function getCostShortLabel(card) {
     return "0";
   }
   return card.costType === "bones" ? `${card.cost}Bn` : `${card.cost}Bd`;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function pauseBattleAction(delay = 360) {
+  render();
+  await sleep(delay);
 }
 
 function formatCardMarkup(card) {

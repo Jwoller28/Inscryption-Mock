@@ -284,12 +284,21 @@ h3 {
 
 .slot-card.sacrifice-selected,
 .hand-card.selected {
-  outline: 3px solid var(--danger);
+  box-shadow: 0 0 0 3px var(--danger), inset 0 0 0 1px rgba(82, 49, 25, 0.7);
   transform: translateY(-2px);
 }
 
 .slot-card.targetable {
-  outline: 3px solid rgba(120, 214, 179, 0.95);
+  box-shadow: 0 0 0 3px rgba(120, 214, 179, 0.95), inset 0 0 0 1px rgba(82, 49, 25, 0.7);
+}
+
+.slot-card.combat-attacker {
+  box-shadow: 0 0 0 3px rgba(216, 163, 79, 0.95), inset 0 0 0 1px rgba(82, 49, 25, 0.7);
+  transform: translateY(-2px);
+}
+
+.slot-card.combat-target {
+  box-shadow: 0 0 0 3px rgba(207, 107, 84, 0.95), inset 0 0 0 1px rgba(82, 49, 25, 0.7);
 }
 
 .card-header,

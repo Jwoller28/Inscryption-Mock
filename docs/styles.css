@@ -165,7 +165,11 @@ h3 {
 }
 
 .admin-trigger {
+  padding: 0;
+  border: 0;
+  background: transparent;
   cursor: pointer;
+  text-align: left;
 }
 
 .topbar-actions {

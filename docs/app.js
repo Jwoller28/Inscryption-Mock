@@ -422,6 +422,7 @@ const refs = {
   infoPanelLog: document.getElementById("info-panel-log"),
   drawSquirrelButton: document.getElementById("draw-squirrel-button"),
   drawDeckButton: document.getElementById("draw-deck-button"),
+  adminWinArea: document.getElementById("admin-win-area"),
   adminWinTrigger: document.getElementById("admin-win-trigger"),
   endTurnButton: document.getElementById("end-turn-button"),
   newRunButton: document.getElementById("new-run-button"),
@@ -434,11 +435,11 @@ refs.clearSaveButton.addEventListener("click", clearSave);
 refs.drawSquirrelButton.addEventListener("click", () => chooseDraw("squirrel"));
 refs.drawDeckButton.addEventListener("click", () => chooseDraw("deck"));
 refs.adminWinTrigger?.addEventListener("click", triggerAdminWin);
-refs.adminWinTrigger?.addEventListener("keydown", (event) => {
-  if (event.key === "Enter" || event.key === " ") {
-    event.preventDefault();
-    triggerAdminWin();
+refs.adminWinArea?.addEventListener("dblclick", (event) => {
+  if (event.target === refs.adminWinTrigger) {
+    return;
   }
+  triggerAdminWin();
 });
 refs.closeChoiceButton.addEventListener("click", forceCloseModal);
 refs.choiceBackdrop.addEventListener("click", forceCloseModal);

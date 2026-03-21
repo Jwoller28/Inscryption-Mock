@@ -204,6 +204,7 @@ h3 {
   text-align: left;
   color: #1d120d;
   box-shadow: inset 0 0 0 1px rgba(82, 49, 25, 0.7);
+  transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
 }
 
 .slot-card,
@@ -240,6 +241,18 @@ h3 {
 .secondary-button,
 .ghost-button {
   cursor: pointer;
+}
+
+.slot-card.selectable:hover,
+.hand-card.selectable:hover,
+.choice-card:hover,
+.item-button:hover,
+.primary-button:hover,
+.secondary-button:hover,
+.ghost-button:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.03);
+  box-shadow: 0 14px 24px rgba(0, 0, 0, 0.24), inset 0 0 0 1px rgba(82, 49, 25, 0.7);
 }
 
 .slot-card.sacrifice-selected,
@@ -296,6 +309,7 @@ h3 {
 .choice-card {
   width: min(100%, 240px);
   background: linear-gradient(180deg, #e6cc9a, #a87443);
+  min-height: 118px;
 }
 
 .choice-card.node-choice,
@@ -350,6 +364,7 @@ h3 {
 .item-button {
   background: linear-gradient(180deg, #f0d7a3, #ac7a3f);
   font: 700 0.9rem/1.2 Georgia, serif;
+  min-width: 140px;
 }
 
 .primary-button,
@@ -372,6 +387,10 @@ h3 {
   color: var(--text);
   background: rgba(67, 42, 30, 0.9);
   box-shadow: inset 0 0 0 1px rgba(184, 138, 82, 0.32);
+}
+
+#choice-actions {
+  align-items: stretch;
 }
 
 @media (max-width: 980px) {

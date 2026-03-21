@@ -595,6 +595,19 @@ h3 {
   transform: translateY(-2px);
 }
 
+.slot-card.sacrifice-candidate {
+  box-shadow: 0 0 0 2px rgba(207, 107, 84, 0.52), inset 0 0 0 1px rgba(82, 49, 25, 0.7);
+}
+
+.slot-card.drag-target {
+  box-shadow: 0 0 0 3px rgba(120, 214, 179, 0.98), 0 0 18px rgba(120, 214, 179, 0.18), inset 0 0 0 1px rgba(82, 49, 25, 0.7);
+}
+
+.hand-card.dragging-source {
+  opacity: 0.42;
+  transform: scale(0.98);
+}
+
 .slot-card.targetable {
   box-shadow: 0 0 0 3px rgba(120, 214, 179, 0.95), inset 0 0 0 1px rgba(82, 49, 25, 0.7);
 }
@@ -711,7 +724,8 @@ h3 {
 
 .intent-badge,
 .queue-entry-badge,
-.intent-path {
+.intent-path,
+.sacrifice-badge {
   position: absolute;
   left: 6px;
   z-index: 1;
@@ -723,7 +737,8 @@ h3 {
 }
 
 .intent-badge,
-.queue-entry-badge {
+.queue-entry-badge,
+.sacrifice-badge {
   top: 6px;
   padding: 3px 7px;
   border-radius: 999px;
@@ -743,6 +758,12 @@ h3 {
   background: rgba(55, 105, 83, 0.84);
 }
 
+.sacrifice-badge {
+  left: auto;
+  right: 6px;
+  background: rgba(207, 107, 84, 0.84);
+}
+
 .queue-entry-badge.entry-arrow {
   left: auto;
   right: 6px;
@@ -757,6 +778,22 @@ h3 {
   color: rgba(241, 234, 217, 0.88);
   font: 700 0.6rem/1.1 "Trebuchet MS", sans-serif;
   letter-spacing: 0.03em;
+}
+
+.drag-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 90;
+  width: 132px;
+  min-height: 94px;
+  padding: 8px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, var(--card-player-top), var(--card-player-bottom));
+  color: #1d120d;
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.34), inset 0 0 0 1px rgba(82, 49, 25, 0.7);
+  pointer-events: none;
+  transform: translate(-9999px, -9999px);
 }
 
 .lane-fx-hit,
@@ -1519,6 +1556,12 @@ button:disabled {
 
   .attack-chip {
     font-size: 0.62rem;
+  }
+
+  .drag-ghost {
+    width: 116px;
+    min-height: 86px;
+    padding: 7px;
   }
 
   .insight-card {

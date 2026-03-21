@@ -68,6 +68,11 @@ const ITEM_DEFS = {
   boneJar: { id: "boneJar", name: "Bone Jar", description: "Gain 4 Bones." },
   blackGoatBottle: { id: "blackGoatBottle", name: "Black Goat Bottle", description: "Add a Black Goat to your hand." }
 };
+const STARTER_UNLOCKS = {
+  classic: { label: "Classic", bonusCard: null },
+  bones: { label: "Bone Cache", bonusCard: () => createCard("Skeleton", 1, 1, 1, "bones", []) },
+  sky: { label: "Sky Scout", bonusCard: () => createCard("Raven Egg", 0, 2, 1, "blood", ["Fledgling"]) }
+};
 const MODAL_MODES = new Set(["reward", "map", "campfire", "backpack", "sigil", "woodcarver", "mycologists", "economy", "gameover", "complete"]);
 const VALID_MODES = new Set(["battle", ...MODAL_MODES]);
 const INFO_PANELS = ["run", "deck", "log"];
@@ -162,10 +167,13 @@ const uiState = {
   turnSummary: null,
   lastTurnSummary: null,
   fxEvents: [],
+  dragState: null,
+  audioUnlocked: false,
   effectCounter: 0,
   timers: {
     message: null,
-    scale: null
+    scale: null,
+    hold: null
   }
 };
 const refs = {
@@ -213,6 +221,7 @@ const refs = {
   enemyQueue: document.getElementById("enemy-queue"),
   enemyBoard: document.getElementById("enemy-board"),
   playerBoard: document.getElementById("player-board"),
+  dragGhost: document.getElementById("drag-ghost"),
   handStrip: document.getElementById("hand-strip"),
   itemBar: document.getElementById("item-bar"),
   logPanel: document.getElementById("log-panel"),
@@ -244,6 +253,9 @@ refs.infoTabDeck.addEventListener("click", () => setMobileInfoPanel("deck"));
 refs.infoTabLog.addEventListener("click", () => setMobileInfoPanel("log"));
 window.addEventListener("resize", updateOrientationPrompt);
 window.addEventListener("orientationchange", updateOrientationPrompt);
+window.addEventListener("pointermove", handleGlobalPointerMove);
+window.addEventListener("pointerup", handleGlobalPointerUp);
+window.addEventListener("pointercancel", cancelDragInteraction);
 
 boot();
 
@@ -280,6 +292,11 @@ function createInitialState() {
     log: [],
     tutorial: {
       dismissed: false
+    },
+    meta: {
+      lifetimeRuns: 0,
+      unlockedStarterKeys: ["classic"],
+      activeStarterKey: "classic"
     }
   };
 }
@@ -336,14 +353,51 @@ function copyItem(itemDef) {
   return { id: itemDef.id, name: itemDef.name, description: itemDef.description };
 }
 
+function buildStarterDeck() {
+  const deck = STARTER_DECK.map(copyCard);
+  const unlock = STARTER_UNLOCKS[state.meta?.activeStarterKey || "classic"];
+  if (unlock?.bonusCard) {
+    deck.push(unlock.bonusCard());
+  }
+  return deck;
+}
+
+function getStarterUnlockLabel(key) {
+  return STARTER_UNLOCKS[key]?.label || "Classic";
+}
+
+function getNextStarterUnlockKey() {
+  const keys = Array.isArray(state.meta?.unlockedStarterKeys) && state.meta.unlockedStarterKeys.length
+    ? state.meta.unlockedStarterKeys
+    : ["classic"];
+  const offset = Math.max((state.meta?.lifetimeRuns || 1) - 1, 0);
+  return keys[offset % keys.length];
+}
+
+function unlockStarter(key) {
+  if (!STARTER_UNLOCKS[key]) {
+    return;
+  }
+  state.meta.unlockedStarterKeys = Array.isArray(state.meta.unlockedStarterKeys) ? state.meta.unlockedStarterKeys : ["classic"];
+  if (!state.meta.unlockedStarterKeys.includes(key)) {
+    state.meta.unlockedStarterKeys.push(key);
+    appendLog(`Unlocked starter boon: ${getStarterUnlockLabel(key)}.`);
+    showTransientMessage(`Unlocked ${getStarterUnlockLabel(key)} for future runs.`, "success", 1800);
+  }
+}
+
 function startNewRun() {
   const fresh = createInitialState();
+  const previousMeta = Object.assign({ lifetimeRuns: 0, unlockedStarterKeys: ["classic"], activeStarterKey: "classic" }, state.meta || {});
   Object.assign(state, fresh);
+  state.meta = previousMeta;
+  state.meta.lifetimeRuns += 1;
+  state.meta.activeStarterKey = getNextStarterUnlockKey();
   state.map = generateMap();
-  state.currentDeck = STARTER_DECK.map(copyCard);
+  state.currentDeck = buildStarterDeck();
   state.items = [copyItem(ITEM_DEFS.squirrelBottle)];
   moveToNode(0);
-  appendLog("Started a new run.");
+  appendLog(`Started a new run with ${getStarterUnlockLabel(state.meta.activeStarterKey)}.`);
   enterNode(getCurrentNode());
 }
 
@@ -387,6 +441,7 @@ function normalizeStateAfterLoad() {
   state.map = Array.isArray(state.map) ? state.map : [];
   state.rewardOptions = Array.isArray(state.rewardOptions) ? state.rewardOptions : [];
   state.tutorial = Object.assign({ dismissed: false }, state.tutorial || {});
+  state.meta = Object.assign({ lifetimeRuns: 0, unlockedStarterKeys: ["classic"], activeStarterKey: "classic" }, state.meta || {});
   ensureValidUiState("load");
 }
 
@@ -1100,6 +1155,12 @@ function checkBattleEnd() {
       node.completed = true;
     }
     state.battlesWon += 1;
+    if (state.battlesWon >= 1) {
+      unlockStarter("bones");
+    }
+    if (state.battle.nodeType === "BOSS") {
+      unlockStarter("sky");
+    }
     state.currentRound += 1;
     state.cumulativeDamageDealt += state.battle.playerDamage;
     state.cumulativeDamageReceived += state.battle.enemyDamage;
@@ -1987,6 +2048,7 @@ function emitBattleEffect(type, payload = {}) {
   if (uiState.fxEvents.length > 16) {
     uiState.fxEvents.shift();
   }
+  playFeedback(type, payload);
 }
 
 function createTurnSummary() {
@@ -2313,6 +2375,202 @@ function shouldShowTutorialPanel() {
 function dismissTutorialPanel() {
   state.tutorial.dismissed = true;
   render();
+}
+
+function beginHandPointerInteraction(event, index, card) {
+  if (uiState.turnAnimating || state.mode !== "battle") {
+    return;
+  }
+  if (event.target.closest?.("[data-sigil]")) {
+    return;
+  }
+  unlockAudio();
+  cancelHoldTimer();
+  uiState.dragState = {
+    pointerId: event.pointerId,
+    handIndex: index,
+    startX: event.clientX,
+    startY: event.clientY,
+    x: event.clientX,
+    y: event.clientY,
+    dragging: false,
+    targetLane: null,
+    inspected: false
+  };
+  uiState.timers.hold = window.setTimeout(() => {
+    if (!uiState.dragState || uiState.dragState.pointerId !== event.pointerId || uiState.dragState.dragging) {
+      return;
+    }
+    uiState.dragState.inspected = true;
+    if (card.sigils?.length) {
+      openSigilInspector(card);
+    }
+  }, 420);
+}
+
+function handleGlobalPointerMove(event) {
+  const drag = uiState.dragState;
+  if (!drag || drag.pointerId !== event.pointerId) {
+    return;
+  }
+  drag.x = event.clientX;
+  drag.y = event.clientY;
+  const distance = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
+  if (!drag.dragging && distance > 12) {
+    drag.dragging = true;
+    cancelHoldTimer();
+    showDragGhost();
+    selectHandCard(drag.handIndex);
+  }
+  if (!drag.dragging) {
+    return;
+  }
+  updateDragGhost();
+  const nextLane = getPlayerLaneFromPoint(event.clientX, event.clientY);
+  if (drag.targetLane !== nextLane) {
+    drag.targetLane = nextLane;
+    render();
+  }
+}
+
+function handleGlobalPointerUp(event) {
+  const drag = uiState.dragState;
+  if (!drag || drag.pointerId !== event.pointerId) {
+    return;
+  }
+  cancelHoldTimer();
+  if (drag.dragging) {
+    const lane = drag.targetLane;
+    cancelDragInteraction();
+    if (lane !== null) {
+      onPlayerSlotClick(lane);
+    } else {
+      render();
+    }
+    return;
+  }
+
+  const handIndex = drag.handIndex;
+  const inspected = drag.inspected;
+  cancelDragInteraction();
+  const card = state.battle.hand[handIndex];
+  if (!card || inspected) {
+    return;
+  }
+  if (state.selection.selectedHandIndex === handIndex && card.sigils?.length) {
+    openSigilInspector(card);
+    return;
+  }
+  selectHandCard(handIndex);
+}
+
+function cancelDragInteraction() {
+  cancelHoldTimer();
+  uiState.dragState = null;
+  hideDragGhost();
+}
+
+function cancelHoldTimer() {
+  window.clearTimeout(uiState.timers.hold);
+  uiState.timers.hold = null;
+}
+
+function showDragGhost() {
+  refs.dragGhost.classList.remove("hidden");
+  updateDragGhost();
+}
+
+function hideDragGhost() {
+  refs.dragGhost.classList.add("hidden");
+  refs.dragGhost.innerHTML = "";
+}
+
+function updateDragGhost() {
+  const drag = uiState.dragState;
+  if (!drag || !drag.dragging) {
+    return;
+  }
+  const card = state.battle.hand[drag.handIndex];
+  if (!card) {
+    return;
+  }
+  refs.dragGhost.innerHTML = formatCardMarkup(card);
+  refs.dragGhost.style.transform = `translate(${drag.x + 14}px, ${drag.y + 14}px)`;
+}
+
+function getPlayerLaneFromPoint(clientX, clientY) {
+  const target = document.elementFromPoint(clientX, clientY);
+  const slot = target?.closest?.(".slot-card.player");
+  if (!slot) {
+    return null;
+  }
+  const lane = Number(slot.dataset.laneIndex);
+  return Number.isInteger(lane) ? lane : null;
+}
+
+function unlockAudio() {
+  if (uiState.audioUnlocked) {
+    return;
+  }
+  uiState.audioUnlocked = true;
+}
+
+function playFeedback(type, payload = {}) {
+  if (uiState.audioUnlocked) {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        playTone(type, payload, AudioCtx);
+      }
+    } catch (error) {
+      console.warn("Audio feedback unavailable", error);
+    }
+  }
+  triggerHaptics(type);
+}
+
+function playTone(type, payload, AudioCtx) {
+  if (!window.__inscryptionAudioCtx) {
+    window.__inscryptionAudioCtx = new AudioCtx();
+  }
+  const ctx = window.__inscryptionAudioCtx;
+  if (ctx.state === "suspended") {
+    ctx.resume();
+  }
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  const now = ctx.currentTime;
+  const toneMap = {
+    strike: 240,
+    lane_fx: payload.tone === "death" ? 120 : 220,
+    scale: payload.tone === "enemy" ? 110 : 280,
+    boss_phase: 90
+  };
+  osc.type = type === "boss_phase" ? "triangle" : "square";
+  osc.frequency.setValueAtTime(toneMap[type] || 200, now);
+  gain.gain.setValueAtTime(0.001, now);
+  gain.gain.exponentialRampToValueAtTime(type === "boss_phase" ? 0.04 : 0.025, now + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + (type === "boss_phase" ? 0.18 : 0.08));
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + (type === "boss_phase" ? 0.2 : 0.09));
+}
+
+function triggerHaptics(type) {
+  if (!window.navigator?.vibrate) {
+    return;
+  }
+  if (type === "boss_phase") {
+    window.navigator.vibrate([30, 40, 50]);
+    return;
+  }
+  if (type === "scale") {
+    window.navigator.vibrate(20);
+    return;
+  }
+  if (type === "strike" || type === "lane_fx") {
+    window.navigator.vibrate(10);
+  }
 }
 
 function renderAttackPathStage() {
@@ -2648,16 +2906,25 @@ function getSelectionHint() {
 function renderLane(container, slots, side, onClick) {
   container.innerHTML = "";
   const projectedTargets = side === "player" ? getProjectedEnemyTargetLanes() : null;
+  const selectedCard = getSelectedHandCard();
   slots.forEach((card, index) => {
     const button = document.createElement("button");
     button.className = `slot-card ${side} ${card ? "" : "empty"} ${onClick ? "selectable" : ""}`;
+    button.dataset.laneIndex = String(index);
     const laneEffect = getLaneEffect(side, index);
     const targetPressure = projectedTargets ? projectedTargets.get(index) : null;
+    const dragTarget = uiState.dragState?.dragging && uiState.dragState?.targetLane === index && side === "player";
     if (side === "player" && canPlaceOnSlot(index)) {
       button.classList.add("targetable");
     }
+    if (dragTarget) {
+      button.classList.add("drag-target");
+    }
     if (side === "player" && state.selection.selectedSacrificeIndexes.includes(index)) {
       button.classList.add("sacrifice-selected");
+    }
+    if (side === "player" && card && isSacrificeCandidate(index, selectedCard)) {
+      button.classList.add("sacrifice-candidate");
     }
     if (uiState.combatPreview && uiState.combatPreview.side === side && uiState.combatPreview.attackerLane === index) {
       button.classList.add("combat-attacker");
@@ -2671,7 +2938,7 @@ function renderLane(container, slots, side, onClick) {
     if (side === "enemy" && !card && state.battle.enemyQueue[index] && container === refs.enemyBoard) {
       button.classList.add("queue-entry-slot");
     }
-    const intentMarkup = getLaneOverlayMarkup(side, index, card, targetPressure, container);
+    const intentMarkup = getLaneOverlayMarkup(side, index, card, targetPressure, container, selectedCard);
     if (laneEffect) {
       button.classList.add(`lane-effect-${laneEffect.tone}`);
     }
@@ -2690,12 +2957,13 @@ function renderLane(container, slots, side, onClick) {
     } else {
       button.disabled = true;
     }
+    bindCardHoldInspector(button, card);
     bindSigilButtons(button, card);
     container.appendChild(button);
   });
 }
 
-function getLaneOverlayMarkup(side, index, card, targetPressure, container) {
+function getLaneOverlayMarkup(side, index, card, targetPressure, container, selectedCard) {
   const overlays = [];
   if (side === "player" && targetPressure?.length) {
     const boardPower = targetPressure
@@ -2722,8 +2990,20 @@ function getLaneOverlayMarkup(side, index, card, targetPressure, container) {
   if (side === "enemy" && container === refs.enemyBoard && !card && state.battle.enemyQueue[index]) {
     overlays.push(`<span class="queue-entry-badge entry-arrow">${escapeHtml(`<- ${state.battle.enemyQueue[index].name}`)}</span>`);
   }
+  if (side === "player" && card && isSacrificeCandidate(index, selectedCard)) {
+    overlays.push(`<span class="sacrifice-badge">${escapeHtml(`Blood ${getSacrificeValue(card)}`)}</span>`);
+  }
 
   return overlays.join("");
+}
+
+function isSacrificeCandidate(index, selectedCard = getSelectedHandCard()) {
+  return !!(
+    selectedCard
+    && selectedCard.costType === "blood"
+    && selectedCard.cost > 0
+    && state.battle.playerSlots[index]
+  );
 }
 
 function renderHand() {
@@ -2741,14 +3021,11 @@ function renderHand() {
     if (state.selection.selectedHandIndex === index) {
       button.classList.add("selected");
     }
+    if (uiState.dragState?.dragging && uiState.dragState.handIndex === index) {
+      button.classList.add("dragging-source");
+    }
     button.innerHTML = formatCardMarkup(card);
-    button.addEventListener("click", () => {
-      if (state.selection.selectedHandIndex === index && card.sigils?.length) {
-        openSigilInspector(card);
-        return;
-      }
-      selectHandCard(index);
-    });
+    button.addEventListener("pointerdown", (event) => beginHandPointerInteraction(event, index, card));
     bindSigilButtons(button, card);
     refs.handStrip.appendChild(button);
   });
@@ -3027,6 +3304,7 @@ function renderRunInfo() {
   refs.runText.innerHTML = `
     <strong>${escapeHtml(`Round ${state.currentRound} | Battles won ${state.battlesWon}`)}</strong><br>
     ${escapeHtml(`Deck size ${state.currentDeck.length} | Items ${state.items.length}${bossText}`)}<br>
+    ${escapeHtml(`Starter boon ${getStarterUnlockLabel(state.meta?.activeStarterKey || "classic")} | Unlocked ${state.meta?.unlockedStarterKeys?.length || 1}`)}<br>
     ${escapeHtml(encounter.long || "Continue the run.")}
   `;
 }
@@ -3065,6 +3343,40 @@ function bindSigilButtons(container, card) {
       openSigilInspector({ name: card.name, sigils: [sigil] });
     });
   });
+}
+
+function bindCardHoldInspector(container, card) {
+  if (!card?.sigils?.length) {
+    return;
+  }
+  let timer = null;
+  let origin = null;
+  const clear = () => {
+    window.clearTimeout(timer);
+    timer = null;
+    origin = null;
+  };
+  container.addEventListener("pointerdown", (event) => {
+    if (event.target.closest("[data-sigil]")) {
+      return;
+    }
+    origin = { x: event.clientX, y: event.clientY };
+    timer = window.setTimeout(() => {
+      openSigilInspector(card);
+      clear();
+    }, 420);
+  });
+  container.addEventListener("pointermove", (event) => {
+    if (!origin || !timer) {
+      return;
+    }
+    if (Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > 10) {
+      clear();
+    }
+  });
+  container.addEventListener("pointerup", clear);
+  container.addEventListener("pointercancel", clear);
+  container.addEventListener("pointerleave", clear);
 }
 
 function getSigilIcon(sigil) {

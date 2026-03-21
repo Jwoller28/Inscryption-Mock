@@ -62,9 +62,10 @@
 
         <section id="battle-view">
           <div class="status-row">
-            <div class="status-card">
+            <div id="scale-card" class="status-card">
               <span class="status-label">Scale</span>
               <strong id="scale-text">0 | 0</strong>
+              <span id="scale-fx" class="scale-fx hidden" aria-live="polite"></span>
             </div>
             <div class="status-card">
               <span class="status-label">Bones</span>
@@ -83,6 +84,14 @@
               <strong id="item-count-text">0</strong>
             </div>
           </div>
+
+          <section class="combat-hud" aria-live="polite">
+            <div class="combat-rail">
+              <span id="battle-phase-chip" class="phase-chip">Battle Ready</span>
+              <p id="battle-tip" class="combat-tip"></p>
+            </div>
+            <div id="battle-banner" class="combat-banner hidden"></div>
+          </section>
 
           <section class="board-section">
             <div class="section-head">

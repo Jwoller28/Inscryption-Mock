@@ -154,7 +154,16 @@ const uiState = {
   mobileInfoPanel: "run",
   sigilInspector: null,
   turnAnimating: false,
-  combatPreview: null
+  combatPreview: null,
+  battlePhase: { text: "Battle Ready", tone: "neutral" },
+  transientMessage: null,
+  scaleEffect: null,
+  laneEffects: [],
+  effectCounter: 0,
+  timers: {
+    message: null,
+    scale: null
+  }
 };
 const refs = {
   screenText: document.getElementById("screen-text"),
@@ -179,11 +188,16 @@ const refs = {
   closeSigilButton: document.getElementById("close-sigil-button"),
   drawModal: document.getElementById("draw-modal"),
   drawBackdrop: document.getElementById("draw-modal-backdrop"),
+  scaleCard: document.getElementById("scale-card"),
   scaleText: document.getElementById("scale-text"),
+  scaleFx: document.getElementById("scale-fx"),
   bonesText: document.getElementById("bones-text"),
   selectionText: document.getElementById("selection-text"),
   selectionHintText: document.getElementById("selection-hint-text"),
   itemCountText: document.getElementById("item-count-text"),
+  battlePhaseChip: document.getElementById("battle-phase-chip"),
+  battleTip: document.getElementById("battle-tip"),
+  battleBanner: document.getElementById("battle-banner"),
   drawCaption: document.getElementById("draw-caption"),
   runText: document.getElementById("run-text"),
   queueCaption: document.getElementById("queue-caption"),
@@ -518,6 +532,7 @@ function startBattle(node) {
   state.currentScreen = node.type === "BOSS" ? "Boss Battle" : "Battle";
   state.battle = createBattleState();
   state.selection = createSelectionState();
+  clearTransientCombatUi();
   state.battle.nodeType = node.type;
   state.battle.bossType = node.type === "BOSS" ? getBossType(node.region) : null;
   state.battle.hand = [createLibraryCard("squirrel")];
@@ -529,6 +544,8 @@ function startBattle(node) {
   drawPlayerCard();
   fillEnemyQueue();
   state.battle.awaitingDrawChoice = false;
+  setBattlePhase(node.type === "BOSS" ? `${getBossDisplayName()} awaits` : "Battle Ready", node.type === "BOSS" ? "enemy" : "neutral");
+  showTransientMessage(node.type === "BOSS" ? `${getBossDisplayName()} enters the fight.` : `Battle begins in ${node.region}.`, node.type === "BOSS" ? "enemy" : "neutral", 1800);
 
   appendLog(`Entered ${node.type === "BOSS" ? "a boss battle" : "a battle"} in ${node.region}.`);
   render();
@@ -762,11 +779,15 @@ async function endTurn() {
   }
   if (state.battle.awaitingDrawChoice) {
     appendLog("Choose whether to draw from the deck or take a Squirrel first.");
+    showTransientMessage("Choose Deck or Squirrel before you play.", "warning");
+    setBattlePhase("Waiting on draw", "warning");
     render();
     return;
   }
 
   uiState.turnAnimating = true;
+  setBattlePhase("Player attack phase", "player");
+  showTransientMessage("Your side attacks first.", "player", 900);
   render();
   try {
     appendLog("Player attacks.");
@@ -782,10 +803,14 @@ async function endTurn() {
     if (state.battle.skipEnemyAttackPhase) {
       state.battle.skipEnemyAttackPhase = false;
       appendLog("Hourglass stopped the enemy attack.");
+      setBattlePhase("Enemy attack skipped", "success");
+      showTransientMessage("Hourglass skips the enemy attack phase.", "success", 1100);
       await pauseBattleAction();
     } else {
       appendLog("Enemy attacks.");
       tickTurns(state.battle.enemySlots);
+      setBattlePhase("Enemy attack phase", "enemy");
+      showTransientMessage("Enemy creatures strike back.", "enemy", 900);
       await pauseBattleAction();
       for (let lane = 0; lane < 4; lane += 1) {
         await resolveAttackLane(state.battle.enemySlots, state.battle.playerSlots, lane, false);
@@ -802,6 +827,7 @@ async function endTurn() {
 
     advanceEnemyBoard();
     state.battle.awaitingDrawChoice = true;
+    setBattlePhase("Choose a draw", "warning");
     state.battle.playerAirborneTurns = Math.max(0, state.battle.playerAirborneTurns - 1);
     state.selection = createSelectionState();
     await pauseBattleAction();
@@ -896,6 +922,7 @@ async function singleStrike(attackingRow, defendingRow, attackerLane, targetLane
     attackerLane,
     targetLane
   };
+  queueLaneEffect(isPlayer ? "player" : "enemy", attackerLane, getAttackCue(attacker), "attack", 520);
   render();
   await sleep(280);
 
@@ -909,6 +936,7 @@ async function singleStrike(attackingRow, defendingRow, attackerLane, targetLane
 
   if (attackPower <= 0) {
     appendLog(`${attacker.name} could not deal damage.`);
+    queueLaneEffect(isPlayer ? "player" : "enemy", attackerLane, "0", "block");
     await pauseBattleAction();
     return;
   }
@@ -917,9 +945,19 @@ async function singleStrike(attackingRow, defendingRow, attackerLane, targetLane
     if (isPlayer) {
       state.battle.playerDamage += attackPower;
       appendLog(`${attacker.name} struck the scale for ${attackPower}.`);
+      showScaleEffect(`+${attackPower}`, "player");
     } else {
       state.battle.enemyDamage += attackPower;
       appendLog(`${attacker.name} dealt ${attackPower} direct damage.`);
+      showScaleEffect(`-${attackPower}`, "enemy");
+    }
+    queueLaneEffect(isPlayer ? "player" : "enemy", attackerLane, `${attackPower}`, "direct");
+    if (defender && repulsive) {
+      queueLaneEffect(isPlayer ? "player" : "enemy", attackerLane, "Repelled", "block");
+    } else if (defender && waterborne) {
+      queueLaneEffect(isPlayer ? "player" : "enemy", attackerLane, "Over", "direct");
+    } else if (airborne && !blockedByLeap) {
+      queueLaneEffect(isPlayer ? "player" : "enemy", attackerLane, "Fly", "direct");
     }
     await pauseBattleAction();
     return;
@@ -942,6 +980,7 @@ function resolveDefenderLane(defendingRow, targetLane, airborne) {
     defendingRow[targetLane] = defendingRow[burrowerLane];
     defendingRow[burrowerLane] = null;
     appendLog(`${defendingRow[targetLane].name} burrowed into lane ${targetLane + 1}.`);
+    queueLaneEffect(getLaneSide(defendingRow), targetLane, "Burrow", "move", 850);
     return targetLane;
   }
   return burrowerLane;
@@ -990,15 +1029,18 @@ function dealCombatDamage(attackingRow, defendingRow, attackerLane, defenderLane
   const lethal = attacker.sigils.includes("Touch of Death");
   defender.health = lethal ? 0 : defender.health - attackPower;
   appendLog(`${attacker.name} hit ${defender.name} for ${lethal ? "lethal" : attackPower}.`);
+  queueLaneEffect(isPlayer ? "enemy" : "player", defenderLane, lethal ? "Lethal" : `-${attackPower}`, lethal ? "death" : "hit");
 
   if (defender.sigils.includes("Bees Within") && !isPlayer) {
     state.battle.hand.push(createLibraryCard("bee"));
     appendLog(`${defender.name} released a Bee into your hand.`);
+    showTransientMessage(`${defender.name} released a Bee into your hand.`, "success", 1100);
   }
 
   if (defender.sigils.includes("Sharp Quills")) {
     attacker.health -= 1;
     appendLog(`${defender.name} reflected 1 damage.`);
+    queueLaneEffect(isPlayer ? "player" : "enemy", attackerLane, "Quills", "block", 850);
     if (attacker.health <= 0) {
       removeDeadCard(attackingRow, attackerLane, isPlayer, { kind: "combat", lane: attackerLane, attacker: defender });
     }
@@ -1014,13 +1056,16 @@ function removeDeadCard(row, lane, belongsToPlayer, cause = { kind: "combat", la
   if (!card) {
     return;
   }
+  const side = belongsToPlayer ? "player" : "enemy";
   row[lane] = null;
   if (!belongsToPlayer && card.name === "Bait Bucket") {
     row[lane] = createLibraryCard("shark");
     appendLog("A shark burst from the bait bucket.");
+    queueLaneEffect("enemy", lane, "Shark", "spawn", 1000);
     return;
   }
   onCardRemoved(card, belongsToPlayer, cause);
+  queueLaneEffect(side, lane, `${card.name} down`, "death", 1050);
   appendLog(`${card.name} was destroyed.`);
 }
 
@@ -1061,6 +1106,9 @@ function triggerBossPhaseTransition() {
   state.battle.bossPhase = 2;
   state.battle.playerDamage = 0;
   state.battle.enemyDamage = 0;
+  showScaleEffect("Reset", "neutral", 1200);
+  setBattlePhase(`${getBossDisplayName()} phase 2`, "enemy");
+  showTransientMessage(`${getBossDisplayName()} changes the fight.`, "enemy", 2200);
   appendLog(`${getBossDisplayName()} reveals a second phase.`);
 
   if (state.battle.bossType === "PROSPECTOR") {
@@ -1299,16 +1347,19 @@ function chooseDraw(kind) {
   if (kind === "squirrel") {
     state.battle.hand.push(createLibraryCard("squirrel"));
     appendLog("Drew a Squirrel.");
+    showTransientMessage("Drew a Squirrel.", "player", 900);
   } else {
     if (state.battle.playerDeck.length > 0) {
       drawPlayerCard();
     } else {
       appendLog("Deck is empty. Drew a Squirrel instead.");
       state.battle.hand.push(createLibraryCard("squirrel"));
+      showTransientMessage("Deck empty. Drew a Squirrel instead.", "warning", 1100);
     }
   }
 
   state.battle.awaitingDrawChoice = false;
+  setBattlePhase("Play a card or end turn", "player");
   render();
 }
 
@@ -1346,21 +1397,29 @@ function useItem(itemId) {
   if (itemId === "pliers") {
     state.battle.playerDamage += 1;
     appendLog("You used the pliers on the scale.");
+    showScaleEffect("+1", "player");
+    showTransientMessage("Pliers tip the scale.", "player", 1000);
   } else if (itemId === "squirrelBottle") {
     state.battle.hand.push(createLibraryCard("squirrel"));
     appendLog("A bottled squirrel leapt into your hand.");
+    showTransientMessage("A Squirrel jumps into your hand.", "success", 1000);
   } else if (itemId === "hourglass") {
     state.battle.skipEnemyAttackPhase = true;
     appendLog("Time slowed. The enemy will miss its next attack.");
+    setBattlePhase("Enemy attack skipped next turn", "success");
+    showTransientMessage("Hourglass primed.", "success", 1000);
   } else if (itemId === "fan") {
     state.battle.playerAirborneTurns = 1;
     appendLog("A gust lifts your side into the air.");
+    showTransientMessage("Your side gains Airborne this turn.", "player", 1000);
   } else if (itemId === "boneJar") {
     gainBones(4);
     appendLog("The jar cracked open into four bones.");
+    showTransientMessage("+4 bones.", "success", 900);
   } else if (itemId === "blackGoatBottle") {
     state.battle.hand.push(createLibraryCard("blackGoat"));
     appendLog("A Black Goat emerged from the bottle.");
+    showTransientMessage("Black Goat added to hand.", "success", 1000);
   }
 
   state.items = state.items.filter((entry) => entry.id !== itemId);
@@ -1380,6 +1439,7 @@ function selectHandCard(index) {
   state.selection.selectedHandIndex = index;
   state.selection.selectedSacrificeIndexes = [];
   appendLog(`Selected ${state.battle.hand[index].name}.`);
+  setBattlePhase(`Selected ${state.battle.hand[index].name}`, "player");
   render();
 }
 
@@ -1389,22 +1449,27 @@ function onPlayerSlotClick(index) {
   }
   if (state.battle.awaitingDrawChoice) {
     appendLog("Choose your draw first.");
+    showTransientMessage("Choose Deck or Squirrel before placing a card.", "warning");
+    setBattlePhase("Waiting on draw", "warning");
     return;
   }
 
   const selectedCard = getSelectedHandCard();
   if (!selectedCard) {
     appendLog("Select a hand card first.");
+    showTransientMessage("Select a card in hand first.", "warning");
     return;
   }
 
   if (selectedCard.costType === "bones") {
     if (state.battle.playerSlots[index]) {
       appendLog("That lane is occupied.");
+      showTransientMessage(`Lane ${index + 1} is occupied.`, "warning");
       return;
     }
     if (state.battle.playerBones < selectedCard.cost) {
       appendLog(`You need ${selectedCard.cost} bones for ${selectedCard.name}.`);
+      showTransientMessage(`${selectedCard.name} needs ${selectedCard.cost} bones.`, "warning");
       return;
     }
     state.battle.playerBones -= selectedCard.cost;
@@ -1425,11 +1490,13 @@ function onPlayerSlotClick(index) {
 
   if (state.battle.playerSlots[index]) {
     appendLog("That lane is occupied.");
+    showTransientMessage(`Lane ${index + 1} is occupied.`, "warning");
     return;
   }
 
   if (selectedCard.cost > 0 && getSelectedSacrificeValue() < selectedCard.cost) {
     appendLog(`Select ${selectedCard.cost} sacrifice${selectedCard.cost > 1 ? "s" : ""} first.`);
+    showTransientMessage(`Need ${selectedCard.cost} blood before placing ${selectedCard.name}.`, "warning");
     return;
   }
 
@@ -1444,6 +1511,7 @@ function toggleSacrifice(index) {
   const selectedCard = getSelectedHandCard();
   if (!selectedCard || selectedCard.costType !== "blood" || selectedCard.cost === 0) {
     appendLog("No sacrifices needed.");
+    showTransientMessage("That card does not need blood sacrifices.", "warning");
     return;
   }
 
@@ -1456,6 +1524,7 @@ function toggleSacrifice(index) {
     appendLog(`Marked ${state.battle.playerSlots[index].name} for sacrifice.`);
   } else {
     appendLog("Enough sacrifices already selected.");
+    showTransientMessage("You already have enough blood selected.", "warning");
   }
   render();
 }
@@ -1486,6 +1555,8 @@ function placeSelectedCard(index) {
   state.battle.hand.splice(selectedIndex, 1);
   state.selection = createSelectionState();
   appendLog(`Played ${selectedCard.name}.`);
+  queueLaneEffect("player", index, "Played", "spawn", 850);
+  setBattlePhase(`${selectedCard.name} entered lane ${index + 1}`, "player");
   runOnCardPlaced(state.battle.playerSlots, index, true);
   handleGuardianResponse(state.battle.enemySlots, index);
   render();
@@ -1504,6 +1575,7 @@ function handleGuardianResponse(guardRow, targetLane) {
     guardRow[targetLane] = card;
     guardRow[lane] = null;
     appendLog(`${card.name} guarded lane ${targetLane + 1}.`);
+    queueLaneEffect("enemy", targetLane, "Guard", "move", 900);
     return;
   }
 }
@@ -1837,6 +1909,84 @@ function closeSigilInspector() {
   renderSigilInspector();
 }
 
+function clearTransientCombatUi() {
+  uiState.combatPreview = null;
+  uiState.transientMessage = null;
+  uiState.scaleEffect = null;
+  uiState.laneEffects = [];
+  setBattlePhase("Battle Ready", "neutral");
+  window.clearTimeout(uiState.timers.message);
+  window.clearTimeout(uiState.timers.scale);
+  uiState.timers.message = null;
+  uiState.timers.scale = null;
+}
+
+function setBattlePhase(text, tone = "neutral") {
+  uiState.battlePhase = { text, tone };
+}
+
+function showTransientMessage(text, tone = "neutral", duration = 1600) {
+  uiState.transientMessage = { text, tone };
+  window.clearTimeout(uiState.timers.message);
+  uiState.timers.message = window.setTimeout(() => {
+    uiState.transientMessage = null;
+    render();
+  }, duration);
+  render();
+}
+
+function showScaleEffect(text, tone = "neutral", duration = 900) {
+  uiState.scaleEffect = { text, tone };
+  window.clearTimeout(uiState.timers.scale);
+  uiState.timers.scale = window.setTimeout(() => {
+    uiState.scaleEffect = null;
+    render();
+  }, duration);
+  render();
+}
+
+function queueLaneEffect(side, lane, text, tone = "hit", duration = 900) {
+  const effect = {
+    id: ++uiState.effectCounter,
+    side,
+    lane,
+    text,
+    tone
+  };
+  uiState.laneEffects = [...uiState.laneEffects, effect];
+  window.setTimeout(() => {
+    uiState.laneEffects = uiState.laneEffects.filter((entry) => entry.id !== effect.id);
+    render();
+  }, duration);
+}
+
+function getLaneEffect(side, lane) {
+  for (let index = uiState.laneEffects.length - 1; index >= 0; index -= 1) {
+    const effect = uiState.laneEffects[index];
+    if (effect.side === side && effect.lane === lane) {
+      return effect;
+    }
+  }
+  return null;
+}
+
+function getLaneSide(row) {
+  return row === state.battle.playerSlots ? "player" : "enemy";
+}
+
+function getAttackCue(attacker) {
+  if (attacker.sigils.includes("Trifurcated Strike")) {
+    return "Trio";
+  }
+  if (attacker.sigils.includes("Bifurcated Strike")) {
+    return "Split";
+  }
+  if (attacker.sigils.includes("Double Strike")) {
+    return "Twin";
+  }
+  return "Strike";
+}
+
 function renderSigilInspector() {
   const active = !!uiState.sigilInspector;
   refs.sigilModal.classList.toggle("hidden", !active);
@@ -1912,12 +2062,68 @@ function renderBattle() {
   refs.selectionHintText.textContent = getSelectionHint();
   refs.itemCountText.textContent = String(state.items.length);
   refs.queueCaption.textContent = state.battle.enemyDeck.length > 0 ? `${state.battle.enemyDeck.length} cards left in enemy deck` : "Enemy deck empty";
+  renderCombatHud();
 
   renderLane(refs.enemyQueue, state.battle.enemyQueue, "enemy", null);
   renderLane(refs.enemyBoard, state.battle.enemySlots, "enemy", null);
   renderLane(refs.playerBoard, state.battle.playerSlots, "player", onPlayerSlotClick);
   renderHand();
   renderItems();
+}
+
+function renderCombatHud() {
+  refs.battlePhaseChip.textContent = uiState.battlePhase.text;
+  refs.battlePhaseChip.className = `phase-chip ${uiState.battlePhase.tone || "neutral"}`;
+  refs.battleTip.textContent = getBattleTip();
+  if (uiState.transientMessage) {
+    refs.battleBanner.textContent = uiState.transientMessage.text;
+    refs.battleBanner.className = `combat-banner ${uiState.transientMessage.tone || "neutral"}`;
+    refs.battleBanner.classList.remove("hidden");
+  } else {
+    refs.battleBanner.textContent = "";
+    refs.battleBanner.className = "combat-banner hidden";
+  }
+
+  if (uiState.scaleEffect) {
+    refs.scaleFx.textContent = uiState.scaleEffect.text;
+    refs.scaleFx.className = `scale-fx ${uiState.scaleEffect.tone || "neutral"}`;
+    refs.scaleFx.classList.remove("hidden");
+    refs.scaleCard.classList.add("scale-pulse");
+  } else {
+    refs.scaleFx.textContent = "";
+    refs.scaleFx.className = "scale-fx hidden";
+    refs.scaleCard.classList.remove("scale-pulse");
+  }
+}
+
+function getBattleTip() {
+  if (uiState.turnAnimating) {
+    return "Combat is resolving.";
+  }
+  if (state.battle.awaitingDrawChoice) {
+    return "Start the turn by drawing from the deck or taking a Squirrel.";
+  }
+  if (uiState.transientMessage && uiState.transientMessage.tone === "warning") {
+    return uiState.transientMessage.text;
+  }
+  const selectedCard = getSelectedHandCard();
+  if (selectedCard) {
+    if (selectedCard.costType === "bones") {
+      return `${selectedCard.name} costs ${selectedCard.cost} bones.`;
+    }
+    if (selectedCard.cost > 0) {
+      const selectedValue = getSelectedSacrificeValue();
+      const needed = Math.max(selectedCard.cost - selectedValue, 0);
+      return needed > 0
+        ? `${selectedCard.name} still needs ${needed} blood.`
+        : `Place ${selectedCard.name} into an empty lane.`;
+    }
+    return `Place ${selectedCard.name} into an empty lane.`;
+  }
+  if (state.runNumber === 1 && state.currentNodeIndex === 0) {
+    return "Blood cards need sacrifices. Bone cards spend bones. Tap a sigil badge to inspect it.";
+  }
+  return "Tap a card, then a lane. Tap sigils for details.";
 }
 
 function getSelectionHint() {
@@ -1948,6 +2154,7 @@ function renderLane(container, slots, side, onClick) {
   slots.forEach((card, index) => {
     const button = document.createElement("button");
     button.className = `slot-card ${side} ${card ? "" : "empty"} ${onClick ? "selectable" : ""}`;
+    const laneEffect = getLaneEffect(side, index);
     if (side === "player" && canPlaceOnSlot(index)) {
       button.classList.add("targetable");
     }
@@ -1960,7 +2167,10 @@ function renderLane(container, slots, side, onClick) {
     if (uiState.combatPreview && uiState.combatPreview.side !== side && uiState.combatPreview.targetLane === index) {
       button.classList.add("combat-target");
     }
-    button.innerHTML = card ? formatCardMarkup(card) : `<span class="empty-caption">${side === "player" ? "Empty" : "None"}</span>`;
+    if (laneEffect) {
+      button.classList.add(`lane-effect-${laneEffect.tone}`);
+    }
+    button.innerHTML = `${card ? formatCardMarkup(card) : `<span class="empty-caption">${side === "player" ? "Empty" : "None"}</span>`}${laneEffect ? `<span class="lane-fx lane-fx-${escapeHtml(laneEffect.tone)}">${escapeHtml(laneEffect.text)}</span>` : ""}`;
     if (onClick) {
       button.addEventListener("click", () => {
         if (card && card.sigils?.length && !getSelectedHandCard()) {

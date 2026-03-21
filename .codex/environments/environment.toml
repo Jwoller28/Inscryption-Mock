@@ -9,3 +9,12 @@ script = ""
 name = "Run"
 icon = "run"
 command = "cmd /c run.bat"
+
+[[actions]]
+name = "push"
+icon = "run"
+command = '''
+git add .
+git commit -m "new content"
+git push
+'''

@@ -1,5 +1,39 @@
-const SAVE_KEY = "inscryption-mock-web-save-v2";
+const SAVE_VERSION = 3;
+const SAVE_KEY = "inscryption-mock-web-save-v3";
 const REGIONS = ["Woodlands", "Wetlands", "Snowline"];
+const NODE_META = {
+  BATTLE: { label: "Battle", summary: "Fight for a reward card." },
+  BOSS: { label: "Boss Battle", summary: "Survive a scripted two-phase encounter." },
+  CAMPFIRE: { label: "Campfire", summary: "Improve one card permanently." },
+  BACKPACK: { label: "Backpack", summary: "Take a battle item." },
+  SIGIL_TRANSFER: { label: "Ritual Stones", summary: "Move a sigil between cards." },
+  WOODCARVER: { label: "Totem Builder", summary: "Add one new sigil to your deck." },
+  MYCOLOGISTS: { label: "Card Merge", summary: "Merge duplicate cards into one stronger card." },
+  ECONOMY: { label: "Trader", summary: "Trade one card for a curated offer." }
+};
+const SIGIL_META = {
+  Airborne: "Ignores blockers unless they can leap.",
+  "Mighty Leap": "Blocks airborne attackers.",
+  Burrower: "Moves to block an open lane.",
+  Leader: "Adjacent allies gain 1 power.",
+  "Sharp Quills": "Deals 1 damage back when struck.",
+  "Double Strike": "Hits twice when attacking.",
+  "Bifurcated Strike": "Hits left and right lanes.",
+  "Trifurcated Strike": "Hits left, center, and right lanes.",
+  "Bees Within": "Creates a Bee when struck.",
+  Stinky: "Opposing creature loses 1 power.",
+  "Bone King": "Leaves 4 bones when destroyed.",
+  "Worthy Sacrifice": "Counts as 3 blood when sacrificed.",
+  Fledgling: "Evolves after surviving a turn.",
+  Guardian: "Moves to protect an open lane.",
+  "Ant Spawner": "Creates a Worker Ant when played.",
+  Bellist: "Creates adjacent Chimes.",
+  "Blood Lust": "Gains 1 power after a kill.",
+  "Corpse Eater": "Jumps from hand into an empty death lane.",
+  Scavenger: "Gains a bone when an enemy dies.",
+  Waterborne: "Enemy attacks pass over it.",
+  Repulsive: "Cannot be targeted directly."
+};
 const ITEM_DEFS = {
   pliers: { id: "pliers", name: "Pliers", description: "Deal 1 direct damage to the enemy scale." },
   squirrelBottle: { id: "squirrelBottle", name: "Squirrel Bottle", description: "Add a Squirrel to your hand." },
@@ -139,6 +173,7 @@ function boot() {
 
 function createInitialState() {
   return {
+    saveVersion: SAVE_VERSION,
     mode: "battle",
     currentScreen: null,
     runNumber: 1,
@@ -238,6 +273,10 @@ function loadSavedState() {
 
   try {
     const parsed = JSON.parse(raw);
+    if (!parsed || parsed.saveVersion !== SAVE_VERSION) {
+      window.localStorage.removeItem(SAVE_KEY);
+      return false;
+    }
     const fresh = createInitialState();
     Object.assign(state, fresh, parsed);
     state.saveStatus = "Loaded";
@@ -1838,26 +1877,11 @@ function createActionChoice(title, subtitle, onClick) {
 }
 
 function getNodeDisplayName(type) {
-  if (type === "BATTLE") return "Battle";
-  if (type === "BOSS") return "Boss Battle";
-  if (type === "CAMPFIRE") return "Campfire";
-  if (type === "BACKPACK") return "Backpack";
-  if (type === "SIGIL_TRANSFER") return "Ritual Stones";
-  if (type === "WOODCARVER") return "Totem Builder";
-  if (type === "MYCOLOGISTS") return "Card Merge";
-  if (type === "ECONOMY") return "Trader";
-  return type;
+  return NODE_META[type]?.label || type;
 }
 
 function getNodeSummary(type) {
-  if (type === "BATTLE" || type === "BOSS") return "Fight for a reward card.";
-  if (type === "CAMPFIRE") return "Improve one card permanently.";
-  if (type === "BACKPACK") return "Take a battle item.";
-  if (type === "SIGIL_TRANSFER") return "Move a sigil between cards.";
-  if (type === "WOODCARVER") return "Add one new sigil to your deck.";
-  if (type === "MYCOLOGISTS") return "Merge duplicate cards into one stronger card.";
-  if (type === "ECONOMY") return "Trade one card for a curated offer.";
-  return "Continue the run.";
+  return NODE_META[type]?.summary || "Continue the run.";
 }
 
 function renderRunInfo() {
@@ -1888,7 +1912,13 @@ function renderLog() {
 function formatCardMarkup(card) {
   const sigils = card.sigils.length ? card.sigils.join(", ") : "None";
   const costLabel = `${card.cost} ${card.costType}`;
-  return [`<span class="card-name">${escapeHtml(card.name)}</span>`, `<span class="card-stats">Cost ${escapeHtml(costLabel)} | ATK ${card.attack} | HP ${card.health}</span>`, `<span class="card-sigils">Sigils: ${escapeHtml(sigils)}</span>`].join("");
+  const primarySigil = card.sigils.length ? SIGIL_META[card.sigils[0]] || card.sigils[0] : "No sigils";
+  return [
+    `<span class="card-name">${escapeHtml(card.name)}</span>`,
+    `<span class="card-stats">Cost ${escapeHtml(costLabel)} | ATK ${card.attack} | HP ${card.health}</span>`,
+    `<span class="card-sigils">Sigils: ${escapeHtml(sigils)}</span>`,
+    `<span class="card-meta">${escapeHtml(primarySigil)}</span>`
+  ].join("");
 }
 
 function appendLog(message) {

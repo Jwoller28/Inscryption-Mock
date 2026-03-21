@@ -422,6 +422,7 @@ const refs = {
   infoPanelLog: document.getElementById("info-panel-log"),
   drawSquirrelButton: document.getElementById("draw-squirrel-button"),
   drawDeckButton: document.getElementById("draw-deck-button"),
+  adminWinTrigger: document.getElementById("admin-win-trigger"),
   endTurnButton: document.getElementById("end-turn-button"),
   newRunButton: document.getElementById("new-run-button"),
   clearSaveButton: document.getElementById("clear-save-button")
@@ -432,6 +433,13 @@ refs.newRunButton.addEventListener("click", startNewRun);
 refs.clearSaveButton.addEventListener("click", clearSave);
 refs.drawSquirrelButton.addEventListener("click", () => chooseDraw("squirrel"));
 refs.drawDeckButton.addEventListener("click", () => chooseDraw("deck"));
+refs.adminWinTrigger?.addEventListener("click", triggerAdminWin);
+refs.adminWinTrigger?.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    triggerAdminWin();
+  }
+});
 refs.closeChoiceButton.addEventListener("click", forceCloseModal);
 refs.choiceBackdrop.addEventListener("click", forceCloseModal);
 refs.closeSigilButton.addEventListener("click", closeSigilInspector);
@@ -1784,20 +1792,7 @@ function checkBattleEnd() {
       triggerBossPhaseTransition();
       return true;
     }
-    const node = getCurrentNode();
-    if (node) {
-      node.completed = true;
-    }
-    state.battlesWon += 1;
-    if (state.battle.nodeType === "BOSS") {
-      state.meta.completedBosses = (state.meta.completedBosses || 0) + 1;
-    }
-    applyMetaUnlockProgress();
-    state.currentRound += 1;
-    state.cumulativeDamageDealt += state.battle.playerDamage;
-    state.cumulativeDamageReceived += state.battle.enemyDamage;
-    appendLog("Battle won.");
-    showCardReward();
+    resolveBattleVictory();
     return true;
   }
 
@@ -1813,6 +1808,38 @@ function checkBattleEnd() {
   }
 
   return false;
+}
+
+function resolveBattleVictory() {
+  const node = getCurrentNode();
+  if (node) {
+    node.completed = true;
+  }
+  state.battlesWon += 1;
+  if (state.battle.nodeType === "BOSS") {
+    state.meta.completedBosses = (state.meta.completedBosses || 0) + 1;
+  }
+  applyMetaUnlockProgress();
+  state.currentRound += 1;
+  state.cumulativeDamageDealt += state.battle.playerDamage;
+  state.cumulativeDamageReceived += state.battle.enemyDamage;
+  appendLog("Battle won.");
+  showCardReward();
+}
+
+function triggerAdminWin() {
+  if (state.mode !== "battle") {
+    showTransientMessage("Admin win only works during battles.", "warning", 1200);
+    return;
+  }
+  uiState.turnAnimating = false;
+  state.battle.playerDamage = 5;
+  if (state.battle.nodeType === "BOSS") {
+    state.battle.bossPhase = 2;
+  }
+  appendLog("Admin win triggered.");
+  showTransientMessage("Admin win triggered.", "success", 1000);
+  resolveBattleVictory();
 }
 
 function triggerBossPhaseTransition() {

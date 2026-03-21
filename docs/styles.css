@@ -164,6 +164,10 @@ h3 {
   text-transform: uppercase;
 }
 
+.admin-trigger {
+  cursor: pointer;
+}
+
 .topbar-actions {
   align-items: center;
   justify-content: flex-end;

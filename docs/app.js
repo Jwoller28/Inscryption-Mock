@@ -1878,7 +1878,9 @@ function renderInfoPanels() {
 }
 
 function updateOrientationPrompt() {
-  refs.rotateOverlay.classList.add("hidden");
+  if (refs.rotateOverlay) {
+    refs.rotateOverlay.classList.add("hidden");
+  }
 }
 
 function forceCloseModal() {

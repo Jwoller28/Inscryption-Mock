@@ -738,15 +738,9 @@ function generateMap() {
       });
     }
 
-    const preBossLanes = columns[columns.length - 1].lanes;
-    const epicLane = pickAnchorLane(preBossLanes, regionIndex);
+    const epicPlacement = chooseEpicPlacement(columns, regionIndex);
     const bossLane = 1;
 
-    columns.push({
-      regionColumn: columns.length,
-      lanes: [epicLane],
-      fixedType: "EPIC_BATTLE"
-    });
     columns.push({
       regionColumn: columns.length,
       lanes: [bossLane],
@@ -755,7 +749,10 @@ function generateMap() {
 
     columns.forEach((columnData) => {
       const nodes = columnData.lanes.map((lane, laneIndex) => {
-        const type = columnData.fixedType || selectNodeType(region, columnData.regionColumn, normalColumns);
+        const type = columnData.fixedType
+          || (epicPlacement.column === columnData.regionColumn && epicPlacement.lane === lane
+            ? "EPIC_BATTLE"
+            : selectNodeType(region, columnData.regionColumn, normalColumns));
         const node = {
           id: `${region.toLowerCase()}_${nodeIndex}`,
           type,
@@ -786,14 +783,7 @@ function generateMap() {
     for (let column = 0; column < columns.length - 1; column += 1) {
       const currentNodes = columns[column].nodes;
       const nextNodes = columns[column + 1].nodes;
-      const skipBossNodes = columns[column + 2]?.fixedType === "BOSS" && nextNodes[0]?.type === "EPIC_BATTLE"
-        ? columns[column + 2].nodes
-        : null;
-
       linkMapColumns(currentNodes, nextNodes);
-      if (skipBossNodes) {
-        linkMapColumns(currentNodes, skipBossNodes, 1);
-      }
     }
 
     regionStarts.push(columns[0].nodes[0]);
@@ -811,6 +801,29 @@ function generateMap() {
 
   normalizeMapLayout(allNodes);
   return allNodes;
+}
+
+function chooseEpicPlacement(columns, regionIndex = 0) {
+  const candidates = columns
+    .filter((columnData) => columnData.regionColumn > 0 && columnData.regionColumn < columns.length - 1)
+    .filter((columnData) => columnData.lanes.length >= 2);
+
+  let targetColumn = candidates[Math.floor(Math.random() * candidates.length)];
+  if (!targetColumn) {
+    targetColumn = columns[Math.min(Math.max(1, 1 + Math.floor(Math.random() * Math.max(columns.length - 2, 1))), columns.length - 2)];
+    const epicLane = clampLane(pickAnchorLane(targetColumn.lanes, regionIndex) + (targetColumn.lanes[0] === 0 ? 1 : -1));
+    if (!targetColumn.lanes.includes(epicLane)) {
+      targetColumn.lanes.push(epicLane);
+      targetColumn.lanes = [...new Set(targetColumn.lanes)].sort((a, b) => a - b).slice(0, MAP_LANE_COUNT);
+    }
+  }
+
+  const epicLaneOptions = [...targetColumn.lanes].sort((a, b) => Math.abs(a - 1) - Math.abs(b - 1) || a - b);
+  const epicLane = epicLaneOptions[(regionIndex + targetColumn.regionColumn) % epicLaneOptions.length];
+  return {
+    column: targetColumn.regionColumn,
+    lane: epicLane
+  };
 }
 
 function createBranchLanes(previousLanes, column, totalColumns) {

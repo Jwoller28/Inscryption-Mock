@@ -2,7 +2,7 @@ const SAVE_VERSION = 4;
 const SAVE_KEY = "inscryption-mock-web-save-v4";
 const LEGACY_SAVE_KEYS = ["inscryption-mock-web-save-v3"];
 const REGIONS = ["Woodlands", "Wetlands", "Snowline"];
-const MAP_LANE_COUNT = 4;
+const MAP_LANE_COUNT = 3;
 const MAP_COLUMN_SPACING = 144;
 const MAP_LANE_SPACING = 88;
 const MAP_NODE_WIDTH = 78;
@@ -722,7 +722,7 @@ function generateMap() {
   REGIONS.forEach((region, regionIndex) => {
     const normalColumns = 5 + Math.floor(Math.random() * 2);
     const columns = [];
-    const startLane = regionIndex % 2 === 0 ? 1 : 2;
+    const startLane = regionIndex % 2 === 0 ? 1 : 0;
 
     columns.push({
       regionColumn: 0,
@@ -740,7 +740,7 @@ function generateMap() {
 
     const preBossLanes = columns[columns.length - 1].lanes;
     const epicLane = pickAnchorLane(preBossLanes, regionIndex);
-    const bossLane = 1 + (regionIndex % 2);
+    const bossLane = 1;
 
     columns.push({
       regionColumn: columns.length,
@@ -814,13 +814,18 @@ function generateMap() {
 }
 
 function createBranchLanes(previousLanes, column, totalColumns) {
-  const targetCount = column >= totalColumns - 2 ? 2 : 2 + Math.floor(Math.random() * 2);
+  const nearingBoss = column >= totalColumns - 2;
+  const branchChance = nearingBoss ? 0.18 : previousLanes.length <= 1 ? 0.48 : 0.32;
+  const targetCount = Math.min(
+    3,
+    Math.max(1, previousLanes.length + (Math.random() < branchChance ? 1 : 0))
+  );
   const lanes = new Set(previousLanes.map((lane) => clampLane(lane + Math.floor(Math.random() * 3) - 1)));
   while (lanes.size < targetCount) {
     const seed = previousLanes[Math.floor(Math.random() * previousLanes.length)] ?? Math.floor(MAP_LANE_COUNT / 2);
-    lanes.add(clampLane(seed + Math.floor(Math.random() * 5) - 2));
+    lanes.add(clampLane(seed + Math.floor(Math.random() * 3) - 1));
   }
-  return [...lanes].sort((a, b) => a - b).slice(0, 3);
+  return [...lanes].sort((a, b) => a - b).slice(0, MAP_LANE_COUNT);
 }
 
 function pickAnchorLane(lanes, regionIndex = 0) {
@@ -838,17 +843,49 @@ function linkMapColumns(sourceNodes, targetNodes, maxTargets = 2) {
     return;
   }
 
+  const assignments = new Map();
+  targetNodes.forEach((target) => {
+    const nearestSource = [...sourceNodes].sort((a, b) => {
+      const laneDelta = Math.abs(a.lane - target.lane) - Math.abs(b.lane - target.lane);
+      return laneDelta || a.position - b.position;
+    })[0];
+    if (nearestSource) {
+      assignments.set(target.position, nearestSource.position);
+    }
+  });
+
   sourceNodes.forEach((node) => {
-    const rankedTargets = [...targetNodes].sort((a, b) => {
+    const ownedTargets = targetNodes.filter((target) => assignments.get(target.position) === node.position);
+    const rankedTargets = [...ownedTargets].sort((a, b) => {
       const laneDelta = Math.abs(node.lane - a.lane) - Math.abs(node.lane - b.lane);
       return laneDelta || a.position - b.position;
     });
-    const desiredTargets = Math.min(maxTargets, rankedTargets.length, sourceNodes.length > 1 && targetNodes.length > 1 ? 2 : 1);
-    rankedTargets.slice(0, desiredTargets).forEach((target) => {
-      if (!node.nextChoices.includes(target.position)) {
-        node.nextChoices.push(target.position);
+    if (!rankedTargets.length) {
+      const fallback = [...targetNodes].sort((a, b) => {
+        const laneDelta = Math.abs(node.lane - a.lane) - Math.abs(node.lane - b.lane);
+        return laneDelta || a.position - b.position;
+      })[0];
+      if (fallback && !node.nextChoices.includes(fallback.position)) {
+        node.nextChoices.push(fallback.position);
       }
-    });
+      return;
+    }
+
+    const primaryTarget = rankedTargets[0];
+    if (!node.nextChoices.includes(primaryTarget.position)) {
+      node.nextChoices.push(primaryTarget.position);
+    }
+
+    const allowBranch = maxTargets > 1
+      && rankedTargets.length > 1
+      && sourceNodes.length > 1
+      && Math.random() < 0.22;
+    if (allowBranch) {
+      const branchTarget = rankedTargets[1];
+      if (branchTarget && !node.nextChoices.includes(branchTarget.position)) {
+        node.nextChoices.push(branchTarget.position);
+      }
+    }
   });
 
   targetNodes.forEach((target) => {
@@ -856,12 +893,12 @@ function linkMapColumns(sourceNodes, targetNodes, maxTargets = 2) {
     if (hasInbound) {
       return;
     }
-    const nearestSource = [...sourceNodes].sort((a, b) => {
+    const fallbackSource = [...sourceNodes].sort((a, b) => {
       const laneDelta = Math.abs(a.lane - target.lane) - Math.abs(b.lane - target.lane);
       return laneDelta || a.position - b.position;
     })[0];
-    if (nearestSource && !nearestSource.nextChoices.includes(target.position)) {
-      nearestSource.nextChoices.push(target.position);
+    if (fallbackSource && !fallbackSource.nextChoices.includes(target.position)) {
+      fallbackSource.nextChoices.push(target.position);
     }
   });
 }
@@ -920,12 +957,12 @@ function normalizeMapLayout(map) {
 
 function getLegacyLanesForGroup(size, offset = 0) {
   if (size <= 1) {
-    return [1 + (offset % 2)];
+    return [offset % 2 === 0 ? 1 : 0];
   }
   if (size === 2) {
-    return offset % 2 === 0 ? [1, 2] : [0, 2];
+    return offset % 2 === 0 ? [0, 2] : [0, 1];
   }
-  return [0, 1, 2];
+  return [0, 1, 2].slice(0, MAP_LANE_COUNT);
 }
 
 function selectNodeType(region, regionPosition, nodeCount) {

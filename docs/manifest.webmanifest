@@ -3,7 +3,7 @@
   "short_name": "Inscryption",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#11211d",
-  "theme_color": "#1c2b28",
-  "orientation": "landscape"
+  "background_color": "#110e0c",
+  "theme_color": "#16120f",
+  "orientation": "portrait"
 }

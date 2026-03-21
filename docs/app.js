@@ -2248,9 +2248,6 @@ function renderBattle() {
       : "Enemy deck empty";
   renderCombatHud();
   renderTutorialPanel();
-  renderAttackPathStage();
-  renderEnemyIntent();
-  renderTurnRecap();
 
   renderLane(refs.enemyQueue, state.battle.enemyQueue, "enemy", null);
   renderLane(refs.enemyBoard, state.battle.enemySlots, "enemy", null);
@@ -2345,15 +2342,15 @@ function renderTutorialPanel() {
   }
 
   refs.tutorialPanel.innerHTML = `
-    <div class="tutorial-card">
+    <div class="tutorial-card tutorial-card-slim">
       <div class="section-head">
-        <h3>How This Battle Works</h3>
+        <h3>Battle Basics</h3>
         <button id="dismiss-tutorial-button" class="ghost-button" type="button">Hide</button>
       </div>
       <div class="tutorial-grid">
-        <div class="tutorial-tip"><strong>1. Draw first</strong><span>Each turn starts with Deck or Squirrel.</span></div>
-        <div class="tutorial-tip"><strong>2. Pay costs</strong><span>Blood cards need sacrifices. Bone cards spend bones.</span></div>
-        <div class="tutorial-tip"><strong>3. Read the board</strong><span>Red target markers show enemy pressure. Queue cards show where they will enter.</span></div>
+        <div class="tutorial-tip"><strong>Draw</strong><span>Each turn starts with Deck or Squirrel.</span></div>
+        <div class="tutorial-tip"><strong>Pay</strong><span>Blood cards need sacrifices. Bone cards spend bones.</span></div>
+        <div class="tutorial-tip"><strong>Read</strong><span>Lane badges show incoming pressure and queue entry.</span></div>
       </div>
     </div>
   `;

@@ -123,6 +123,7 @@ const CARD_LIBRARY = {
 const state = createInitialState();
 const refs = {
   screenText: document.getElementById("screen-text"),
+  rotateOverlay: document.getElementById("rotate-overlay"),
   regionText: document.getElementById("region-text"),
   progressText: document.getElementById("progress-text"),
   saveText: document.getElementById("save-text"),
@@ -161,16 +162,19 @@ refs.newRunButton.addEventListener("click", startNewRun);
 refs.clearSaveButton.addEventListener("click", clearSave);
 refs.drawSquirrelButton.addEventListener("click", () => chooseDraw("squirrel"));
 refs.drawDeckButton.addEventListener("click", () => chooseDraw("deck"));
+window.addEventListener("resize", updateOrientationPrompt);
+window.addEventListener("orientationchange", updateOrientationPrompt);
 
 boot();
 
 function boot() {
   if (!loadSavedState()) {
     startNewRun();
-    return;
+  } else {
+    appendLog("Loaded saved run.");
+    render();
   }
-  appendLog("Loaded saved run.");
-  render();
+  updateOrientationPrompt();
 }
 
 function createInitialState() {
@@ -1511,6 +1515,7 @@ function completeCurrentEvent() {
 
 function render() {
   saveState();
+  updateOrientationPrompt();
   renderMeta();
   renderBattle();
   renderChoiceScreen();
@@ -1518,6 +1523,14 @@ function render() {
   renderDeck();
   renderLog();
   refs.endTurnButton.disabled = state.mode !== "battle";
+}
+
+function updateOrientationPrompt() {
+  const isPhoneLike = window.innerWidth <= 960;
+  const isPortrait = window.innerHeight > window.innerWidth;
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  const shouldShow = isPhoneLike && isPortrait && isStandalone;
+  refs.rotateOverlay.classList.toggle("hidden", !shouldShow);
 }
 
 function renderMeta() {

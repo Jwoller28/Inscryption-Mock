@@ -315,10 +315,12 @@ h3 {
   align-items: center;
   justify-content: center;
   padding: 20px;
+  pointer-events: none;
 }
 
 .choice-modal:not(.hidden) {
   display: flex;
+  pointer-events: auto;
 }
 
 .choice-modal-backdrop {
@@ -449,7 +451,19 @@ button:disabled {
 }
 
 .rotate-overlay {
-  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 11, 10, 0.88);
+  padding: 16px;
+  pointer-events: none;
+}
+
+.rotate-overlay:not(.hidden) {
+  display: flex;
+  pointer-events: auto;
 }
 
 .rotate-card {
@@ -547,19 +561,6 @@ button:disabled {
 
   .choice-card {
     width: 100%;
-  }
-}
-
-@media (max-width: 960px) and (orientation: portrait) {
-  .rotate-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(6, 11, 10, 0.88);
-    padding: 16px;
   }
 }
 

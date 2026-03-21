@@ -42,6 +42,8 @@ const ITEM_DEFS = {
   boneJar: { id: "boneJar", name: "Bone Jar", description: "Gain 4 Bones." },
   blackGoatBottle: { id: "blackGoatBottle", name: "Black Goat Bottle", description: "Add a Black Goat to your hand." }
 };
+const MODAL_MODES = new Set(["reward", "map", "campfire", "backpack", "sigil", "woodcarver", "mycologists", "economy", "gameover", "complete"]);
+const VALID_MODES = new Set(["battle", ...MODAL_MODES]);
 
 const SIGIL_STONE_POOL = [
   "Airborne",
@@ -131,6 +133,7 @@ const refs = {
   screenSubtitle: document.getElementById("screen-subtitle"),
   battleView: document.getElementById("battle-view"),
   choiceModal: document.getElementById("choice-modal"),
+  choiceBackdrop: document.getElementById("choice-modal-backdrop"),
   choiceView: document.getElementById("choice-view"),
   choiceTitle: document.getElementById("choice-title"),
   closeChoiceButton: document.getElementById("close-choice-button"),
@@ -164,6 +167,7 @@ refs.clearSaveButton.addEventListener("click", clearSave);
 refs.drawSquirrelButton.addEventListener("click", () => chooseDraw("squirrel"));
 refs.drawDeckButton.addEventListener("click", () => chooseDraw("deck"));
 refs.closeChoiceButton.addEventListener("click", forceCloseModal);
+refs.choiceBackdrop.addEventListener("click", forceCloseModal);
 window.addEventListener("resize", updateOrientationPrompt);
 window.addEventListener("orientationchange", updateOrientationPrompt);
 
@@ -305,6 +309,7 @@ function normalizeStateAfterLoad() {
   state.currentDeck = Array.isArray(state.currentDeck) ? state.currentDeck : [];
   state.map = Array.isArray(state.map) ? state.map : [];
   state.rewardOptions = Array.isArray(state.rewardOptions) ? state.rewardOptions : [];
+  ensureValidUiState("load");
 }
 
 function saveState() {
@@ -1037,6 +1042,160 @@ function showRunComplete() {
   render();
 }
 
+function setBattleScreenState(node) {
+  state.mode = "battle";
+  state.currentScreen = node && node.type === "BOSS" ? "Boss Battle" : "Battle";
+  state.eventState = null;
+}
+
+function setMapScreenState(node) {
+  state.mode = "map";
+  state.currentScreen = "Choose Your Path";
+  state.eventState = {
+    type: "map",
+    choices: node ? node.nextChoices.map(findNodeByIndex) : []
+  };
+}
+
+function restoreNodeScreenState(node) {
+  if (!node) {
+    state.mode = "complete";
+    state.currentScreen = "Run Complete";
+    state.eventState = { type: "complete" };
+    return;
+  }
+
+  if (node.completed) {
+    setMapScreenState(node);
+    return;
+  }
+
+  if (node.type === "BATTLE" || node.type === "BOSS") {
+    setBattleScreenState(node);
+    return;
+  }
+
+  if (node.type === "CAMPFIRE") {
+    state.mode = "campfire";
+    state.currentScreen = "Campfire";
+    state.eventState = { type: "campfire", step: "chooseCard", selectedCardIndex: null };
+    return;
+  }
+
+  if (node.type === "BACKPACK") {
+    state.mode = "backpack";
+    state.currentScreen = "Backpack";
+    state.eventState = { type: "backpack", options: shuffle(Object.values(ITEM_DEFS)).slice(0, 3).map(copyItem) };
+    return;
+  }
+
+  if (node.type === "SIGIL_TRANSFER") {
+    const hasDonors = state.currentDeck.some((card) => card.sigils.length > 0);
+    state.mode = "sigil";
+    state.currentScreen = "Ritual Stones";
+    state.eventState = {
+      type: "sigil",
+      step: hasDonors ? "chooseDonor" : "empty",
+      donorIndex: null,
+      sigil: null
+    };
+    return;
+  }
+
+  if (node.type === "WOODCARVER") {
+    state.mode = "woodcarver";
+    state.currentScreen = "Totem Builder";
+    state.eventState = {
+      type: "woodcarver",
+      step: "chooseSigil",
+      offeredSigils: shuffle(SIGIL_STONE_POOL).slice(0, 3),
+      chosenSigil: null
+    };
+    return;
+  }
+
+  if (node.type === "MYCOLOGISTS") {
+    state.mode = "mycologists";
+    state.currentScreen = "Card Merge";
+    state.eventState = {
+      type: "mycologists",
+      pairs: findMergePairs()
+    };
+    return;
+  }
+
+  if (node.type === "ECONOMY") {
+    state.mode = "economy";
+    state.currentScreen = "Trader";
+    state.eventState = {
+      type: "economy",
+      step: "chooseSacrifice",
+      tradeOutIndex: null,
+      offers: [pickRewardCardForTier("Uncommon"), pickRewardCardForTier("Uncommon"), pickRewardCardForTier("Rare")]
+    };
+    return;
+  }
+
+  setMapScreenState(node);
+}
+
+function isValidModalState() {
+  if (!MODAL_MODES.has(state.mode)) {
+    return false;
+  }
+
+  if (state.mode === "reward") {
+    return state.rewardOptions.length > 0;
+  }
+  if (state.mode === "map") {
+    return state.eventState?.type === "map" && Array.isArray(state.eventState.choices);
+  }
+  if (state.mode === "campfire") {
+    return state.eventState?.type === "campfire" && ["chooseCard", "buffChoice"].includes(state.eventState.step);
+  }
+  if (state.mode === "backpack") {
+    return state.eventState?.type === "backpack" && Array.isArray(state.eventState.options);
+  }
+  if (state.mode === "sigil") {
+    return state.eventState?.type === "sigil" && ["empty", "chooseDonor", "chooseSigil", "chooseReceiver"].includes(state.eventState.step);
+  }
+  if (state.mode === "woodcarver") {
+    return state.eventState?.type === "woodcarver" && ["chooseSigil", "chooseReceiver"].includes(state.eventState.step);
+  }
+  if (state.mode === "mycologists") {
+    return state.eventState?.type === "mycologists" && Array.isArray(state.eventState.pairs);
+  }
+  if (state.mode === "economy") {
+    return state.eventState?.type === "economy" && ["chooseSacrifice", "chooseReward"].includes(state.eventState.step) && Array.isArray(state.eventState.offers);
+  }
+  if (state.mode === "gameover") {
+    return state.eventState?.type === "gameover";
+  }
+  if (state.mode === "complete") {
+    return state.eventState?.type === "complete";
+  }
+
+  return false;
+}
+
+function ensureValidUiState(source = "render") {
+  if (!VALID_MODES.has(state.mode)) {
+    restoreNodeScreenState(getCurrentNode());
+    appendLog(`Recovered from an invalid UI mode during ${source}.`);
+    return;
+  }
+
+  if (state.mode === "battle") {
+    state.eventState = null;
+    return;
+  }
+
+  if (!isValidModalState()) {
+    restoreNodeScreenState(getCurrentNode());
+    appendLog(`Recovered from a stuck popup state during ${source}.`);
+  }
+}
+
 function advanceEnemyBoard() {
   for (let lane = 0; lane < 4; lane += 1) {
     if (!state.battle.enemySlots[lane] && state.battle.enemyQueue[lane]) {
@@ -1516,6 +1675,7 @@ function completeCurrentEvent() {
 }
 
 function render() {
+  ensureValidUiState();
   saveState();
   updateOrientationPrompt();
   renderMeta();
@@ -1539,8 +1699,7 @@ function forceCloseModal() {
   if (state.mode === "battle") {
     return;
   }
-  state.mode = "battle";
-  state.currentScreen = state.battle.nodeType === "BOSS" ? "Boss Battle" : "Battle";
+  restoreNodeScreenState(getCurrentNode());
   render();
 }
 
@@ -1676,8 +1835,10 @@ function renderItems() {
 }
 
 function renderChoiceScreen() {
-  const modalVisible = state.mode !== "battle";
+  const modalVisible = MODAL_MODES.has(state.mode) && isValidModalState();
   refs.choiceModal.classList.toggle("hidden", !modalVisible);
+  refs.choiceModal.setAttribute("aria-hidden", String(!modalVisible));
+  refs.choiceModal.inert = !modalVisible;
   refs.choiceView.classList.toggle("hidden", !modalVisible);
   refs.choiceTitle.textContent = state.currentScreen || "Choice";
 

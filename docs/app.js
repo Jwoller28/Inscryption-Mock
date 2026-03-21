@@ -366,6 +366,7 @@ const refs = {
   drawModal: document.getElementById("draw-modal"),
   drawBackdrop: document.getElementById("draw-modal-backdrop"),
   scaleCard: document.getElementById("scale-card"),
+  scaleBalance: document.getElementById("scale-balance"),
   scaleText: document.getElementById("scale-text"),
   scaleFx: document.getElementById("scale-fx"),
   bonesText: document.getElementById("bones-text"),
@@ -2692,6 +2693,9 @@ function renderCombatHud() {
   refs.battlePhaseChip.textContent = uiState.battlePhase.text;
   refs.battlePhaseChip.className = `phase-chip ${uiState.battlePhase.tone || "neutral"}`;
   refs.battleTip.textContent = getBattleTip();
+  const scaleDelta = state.battle.playerDamage - state.battle.enemyDamage;
+  const scaleTilt = Math.max(-18, Math.min(18, scaleDelta * 4));
+  refs.scaleBalance?.style.setProperty("--scale-tilt", `${scaleTilt}deg`);
   if (uiState.transientMessage) {
     refs.battleBanner.textContent = uiState.transientMessage.text;
     refs.battleBanner.className = `combat-banner ${uiState.transientMessage.tone || "neutral"}`;

@@ -203,18 +203,14 @@ const refs = {
   scaleText: document.getElementById("scale-text"),
   scaleFx: document.getElementById("scale-fx"),
   bonesText: document.getElementById("bones-text"),
+  encounterText: document.getElementById("encounter-text"),
+  encounterDetail: document.getElementById("encounter-detail"),
   selectionText: document.getElementById("selection-text"),
-  selectionHintText: document.getElementById("selection-hint-text"),
   itemCountText: document.getElementById("item-count-text"),
   battlePhaseChip: document.getElementById("battle-phase-chip"),
   battleTip: document.getElementById("battle-tip"),
   battleBanner: document.getElementById("battle-banner"),
   tutorialPanel: document.getElementById("tutorial-panel"),
-  attackStageCaption: document.getElementById("attack-stage-caption"),
-  attackPathStage: document.getElementById("attack-path-stage"),
-  intentCaption: document.getElementById("intent-caption"),
-  intentPanel: document.getElementById("intent-panel"),
-  turnRecap: document.getElementById("turn-recap"),
   drawCaption: document.getElementById("draw-caption"),
   runText: document.getElementById("run-text"),
   queueCaption: document.getElementById("queue-caption"),
@@ -2239,8 +2235,10 @@ function renderBattle() {
   refs.scaleText.textContent = `${state.battle.playerDamage} | ${state.battle.enemyDamage}`;
   refs.bonesText.textContent = String(state.battle.playerBones);
   refs.selectionText.textContent = getSelectedHandCard() ? getSelectedHandCard().name : "None";
-  refs.selectionHintText.textContent = getSelectionHint();
   refs.itemCountText.textContent = String(state.items.length);
+  const encounter = getEncounterIdentityText();
+  refs.encounterText.textContent = encounter.short;
+  refs.encounterDetail.textContent = getEncounterDetailText(encounter);
   refs.queueCaption.textContent = state.battle.skipEnemyAttackPhase
     ? "Enemy attack is skipped next turn"
     : state.battle.enemyDeck.length > 0
@@ -3033,7 +3031,7 @@ function renderItems() {
   if (!state.items.length) {
     const empty = document.createElement("div");
     empty.className = "deck-entry";
-    empty.textContent = "No items in pack.";
+    empty.textContent = "No items ready.";
     refs.itemBar.appendChild(empty);
     return;
   }
@@ -3041,7 +3039,7 @@ function renderItems() {
   state.items.forEach((item) => {
     const button = document.createElement("button");
     button.className = "item-button";
-    button.innerHTML = `<strong>${escapeHtml(item.name)}</strong><span class="card-meta">${escapeHtml(item.description)}</span>`;
+    button.innerHTML = `<span class="item-button-name">${escapeHtml(item.name)}</span><span class="item-button-copy">${escapeHtml(item.description)}</span>`;
     button.addEventListener("click", () => useItem(item.id));
     refs.itemBar.appendChild(button);
   });
@@ -3304,6 +3302,24 @@ function renderRunInfo() {
     ${escapeHtml(`Starter boon ${getStarterUnlockLabel(state.meta?.activeStarterKey || "classic")} | Unlocked ${state.meta?.unlockedStarterKeys?.length || 1}`)}<br>
     ${escapeHtml(encounter.long || "Continue the run.")}
   `;
+}
+
+function getEncounterDetailText(encounter) {
+  const parts = [];
+  if (encounter.long) {
+    parts.push(encounter.long);
+  }
+  if (state.battle.skipEnemyAttackPhase) {
+    parts.push("Enemy strike is skipped on the next attack phase.");
+  } else if (state.battle.enemyQueue.some(Boolean)) {
+    parts.push("Queued creatures will drop into matching lanes.");
+  }
+  if (state.battle.awaitingDrawChoice) {
+    parts.push("Start by choosing Deck or Squirrel.");
+  } else if (getSelectedHandCard()) {
+    parts.push(getBattleTip());
+  }
+  return parts.join(" ");
 }
 
 function renderDeck() {

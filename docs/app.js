@@ -32,7 +32,11 @@ const SIGIL_META = {
   "Corpse Eater": "Jumps from hand into an empty death lane.",
   Scavenger: "Gains a bone when an enemy dies.",
   Waterborne: "Enemy attacks pass over it.",
-  Repulsive: "Cannot be targeted directly."
+  Repulsive: "Cannot be targeted directly.",
+  "Trinket Bearer": "When played, finds one item for your pack.",
+  "Touch of Death": "Any damage this creature deals is lethal.",
+  "Many Lives": "Survives being sacrificed.",
+  Unkillable: "Returns to hand when destroyed."
 };
 const SIGIL_ICONS = {
   Airborne: "W",
@@ -56,6 +60,7 @@ const SIGIL_ICONS = {
   Scavenger: "$",
   Waterborne: "=",
   Repulsive: "X",
+  "Trinket Bearer": "P",
   "Touch of Death": "T",
   "Many Lives": "M",
   Unkillable: "U"
@@ -71,7 +76,10 @@ const ITEM_DEFS = {
 const STARTER_UNLOCKS = {
   classic: { label: "Classic", bonusCard: null },
   bones: { label: "Bone Cache", bonusCard: () => createCard("Skeleton", 1, 1, 1, "bones", []) },
-  sky: { label: "Sky Scout", bonusCard: () => createCard("Raven Egg", 0, 2, 1, "blood", ["Fledgling"]) }
+  sky: { label: "Sky Scout", bonusCard: () => createCard("Raven Egg", 0, 2, 1, "blood", ["Fledgling"]) },
+  ants: { label: "Ant Surge", bonusCard: () => createCard("Worker Ant", 1, 2, 1, "blood", []) },
+  supply: { label: "Supply Rat", bonusCard: () => createCard("Pack Rat", 2, 2, 2, "blood", ["Trinket Bearer"]) },
+  ritual: { label: "Sacrificial Rite", bonusCard: () => createCard("Black Goat", 0, 1, 1, "blood", ["Worthy Sacrifice"]) }
 };
 const MODAL_MODES = new Set(["reward", "map", "campfire", "backpack", "sigil", "woodcarver", "mycologists", "economy", "gameover", "complete"]);
 const VALID_MODES = new Set(["battle", ...MODAL_MODES]);
@@ -120,16 +128,23 @@ const REWARD_POOL = [
   rewardCard(createCard("Beehive", 0, 2, 1, "blood", ["Bees Within"]), "Uncommon"),
   rewardCard(createCard("Alpha", 1, 2, 2, "blood", ["Leader"]), "Uncommon"),
   rewardCard(createCard("Worker Ant", 1, 2, 1, "blood", []), "Uncommon"),
+  rewardCard(createCard("Pack Rat", 2, 2, 2, "blood", ["Trinket Bearer"]), "Uncommon"),
+  rewardCard(createCard("Kingfisher", 1, 1, 1, "blood", ["Airborne", "Waterborne"]), "Uncommon"),
+  rewardCard(createCard("River Snapper", 1, 6, 2, "blood", []), "Uncommon"),
   rewardCard(createCard("Ant Queen", 1, 3, 2, "blood", ["Ant Spawner"]), "Uncommon"),
   rewardCard(createCard("Black Goat", 0, 1, 1, "blood", ["Worthy Sacrifice"]), "Uncommon"),
   rewardCard(createCard("Vulture", 3, 1, 2, "blood", ["Scavenger"]), "Uncommon"),
   rewardCard(createCard("Elk Fawn", 1, 2, 1, "blood", ["Fledgling"]), "Uncommon"),
   rewardCard(createCard("Porcupine", 1, 2, 1, "blood", ["Sharp Quills"]), "Uncommon"),
+  rewardCard(createCard("Opossum", 1, 1, 2, "bones", []), "Uncommon"),
   rewardCard(createCard("Grizzly Bear", 4, 6, 3, "blood", []), "Rare"),
   rewardCard(createCard("Mantis God", 2, 1, 3, "blood", ["Double Strike"]), "Rare"),
   rewardCard(createCard("Bone Heap", 1, 2, 2, "bones", ["Sharp Quills"]), "Rare"),
   rewardCard(createCard("Mantis", 1, 1, 1, "blood", ["Bifurcated Strike"]), "Rare"),
   rewardCard(createCard("Cockroach", 1, 1, 4, "bones", ["Unkillable"]), "Rare"),
+  rewardCard(createCard("Pronghorn", 1, 3, 2, "blood", ["Bifurcated Strike"]), "Rare"),
+  rewardCard(createCard("Rat King", 2, 1, 2, "blood", ["Bone King"]), "Rare"),
+  rewardCard(createCard("Dire Wolf Pup", 1, 2, 2, "blood", ["Fledgling"]), "Rare"),
   rewardCard(createCard("Bell Tentacle", 1, 3, 2, "blood", ["Bellist"]), "Rare"),
   rewardCard(createCard("Raven Egg", 0, 2, 1, "blood", ["Fledgling"]), "Rare"),
   rewardCard(createCard("Warren", 0, 2, 1, "blood", ["Ant Spawner"]), "Rare"),
@@ -152,6 +167,156 @@ const CARD_LIBRARY = {
   rabbitPelt: () => createCard("Rabbit Pelt", 0, 1, 0, "blood", []),
   packMule: () => createCard("Pack Mule", 0, 5, 0, "blood", []),
   leapingTrap: () => createCard("Leaping Trap", 0, 2, 0, "blood", ["Touch of Death"])
+};
+
+const ENCOUNTER_LIBRARY = {
+  Woodlands: [
+    {
+      key: "woodlands-ambush",
+      name: "Woodland Ambush",
+      summary: "Cheap predators and blockers flood the center lanes first.",
+      laneOrder: [1, 2, 0, 3],
+      deck: () => [
+        createCard("Stoat", 1, 3, 1, "blood", []),
+        createCard("Bullfrog", 1, 2, 1, "blood", ["Mighty Leap"]),
+        createCard("Adder", 1, 1, 1, "blood", []),
+        createCard("Skunk", 0, 3, 1, "blood", ["Stinky"]),
+        createCard("Elk", 1, 4, 1, "blood", []),
+        createCard("Beehive", 0, 2, 1, "blood", ["Bees Within"])
+      ],
+      openingQueue: () => [null, createCard("Stoat", 1, 3, 1, "blood", []), null, null]
+    },
+    {
+      key: "woodlands-pack",
+      name: "Pack Hunt",
+      summary: "Leaders and fast attackers collapse on lanes already under pressure.",
+      laneOrder: [1, 2, 0, 3],
+      deck: () => [
+        createCard("Wolf Cub", 1, 1, 1, "blood", ["Fledgling"]),
+        createCard("Alpha", 1, 2, 2, "blood", ["Leader"]),
+        createCard("Coyote", 2, 1, 4, "bones", []),
+        createCard("Wolf", 3, 2, 2, "blood", []),
+        createCard("Bloodhound", 2, 3, 2, "blood", ["Guardian"]),
+        createCard("Elk Fawn", 1, 2, 1, "blood", ["Fledgling"])
+      ],
+      openingBoard: () => [null, null, createCard("Alpha", 1, 2, 2, "blood", ["Leader"]), null],
+      minTier: 1
+    },
+    {
+      key: "woodlands-burrow",
+      name: "Burrow Nest",
+      summary: "Burrowers soak the first hits while split attackers line up behind them.",
+      laneOrder: [0, 2, 1, 3],
+      deck: () => [
+        createCard("Mole", 0, 4, 2, "blood", ["Burrower"]),
+        createCard("Bullfrog", 1, 2, 1, "blood", ["Mighty Leap"]),
+        createCard("Porcupine", 1, 2, 1, "blood", ["Sharp Quills"]),
+        createCard("Mantis", 1, 1, 1, "blood", ["Bifurcated Strike"]),
+        createCard("Bloodhound", 2, 3, 2, "blood", ["Guardian"]),
+        createCard("Wolf", 3, 2, 2, "blood", [])
+      ],
+      openingBoard: () => [createCard("Mole", 0, 4, 2, "blood", ["Burrower"]), null, null, null],
+      minTier: 1
+    }
+  ],
+  Wetlands: [
+    {
+      key: "wetlands-tide",
+      name: "Tide Stalkers",
+      summary: "Waterborne threats and fliers force awkward blocks.",
+      laneOrder: [0, 3, 1, 2],
+      deck: () => [
+        createCard("Otter", 1, 1, 1, "blood", ["Waterborne"]),
+        createCard("Kingfisher", 1, 1, 1, "blood", ["Airborne", "Waterborne"]),
+        createCard("Raven", 2, 3, 2, "blood", ["Airborne"]),
+        createCard("Mole", 0, 4, 2, "blood", ["Burrower"]),
+        createCard("Beehive", 0, 2, 1, "blood", ["Bees Within"]),
+        createCard("Vulture", 3, 1, 2, "blood", ["Scavenger"])
+      ],
+      openingQueue: () => [createCard("Otter", 1, 1, 1, "blood", ["Waterborne"]), null, null, null]
+    },
+    {
+      key: "wetlands-bones",
+      name: "Bone Dredge",
+      summary: "Disposable bone creatures roll forward until scavengers clean up the board.",
+      laneOrder: [0, 2, 1, 3],
+      deck: () => [
+        createCard("Skeleton", 1, 1, 1, "bones", []),
+        createCard("Opossum", 1, 1, 2, "bones", []),
+        createCard("Cockroach", 1, 1, 4, "bones", ["Unkillable"]),
+        createCard("Bone Lord", 1, 2, 1, "blood", ["Bone King"]),
+        createCard("Corpse Maggots", 1, 2, 5, "bones", ["Corpse Eater"]),
+        createCard("Vulture", 3, 1, 2, "blood", ["Scavenger"])
+      ],
+      openingBoard: () => [null, createCard("Skeleton", 1, 1, 1, "bones", []), null, null],
+      minTier: 1
+    },
+    {
+      key: "wetlands-buckets",
+      name: "Hookline Cache",
+      summary: "Bait buckets and awkward blockers hide heavier follow-up threats.",
+      laneOrder: [3, 0, 2, 1],
+      deck: () => [
+        createLibraryCard("baitBucket"),
+        createCard("Mole", 0, 4, 2, "blood", ["Burrower"]),
+        createCard("Kingfisher", 1, 1, 1, "blood", ["Airborne", "Waterborne"]),
+        createLibraryCard("shark"),
+        createCard("Bloodhound", 2, 3, 2, "blood", ["Guardian"]),
+        createCard("Raven", 2, 3, 2, "blood", ["Airborne"])
+      ],
+      openingQueue: () => [null, null, createLibraryCard("baitBucket"), null],
+      minTier: 2
+    }
+  ],
+  Snowline: [
+    {
+      key: "snowline-traps",
+      name: "Trapline Patrol",
+      summary: "Touch-of-death traps and heavy finishers punish sloppy lanes.",
+      laneOrder: [0, 2, 1, 3],
+      deck: () => [
+        createLibraryCard("leapingTrap"),
+        createCard("Wolf", 3, 2, 2, "blood", []),
+        createCard("Pronghorn", 1, 3, 2, "blood", ["Bifurcated Strike"]),
+        createCard("Bloodhound", 2, 3, 2, "blood", ["Guardian"]),
+        createCard("Mantis", 1, 1, 1, "blood", ["Bifurcated Strike"]),
+        createCard("Grizzly Bear", 4, 6, 3, "blood", [])
+      ],
+      openingBoard: () => [createLibraryCard("leapingTrap"), null, null, null]
+    },
+    {
+      key: "snowline-elites",
+      name: "Apex Line",
+      summary: "Premium sigils and overstatted bodies press every lane at once.",
+      laneOrder: [1, 2, 0, 3],
+      deck: () => [
+        createCard("Grizzly Bear", 4, 6, 3, "blood", []),
+        createCard("Mantis God", 2, 1, 3, "blood", ["Double Strike"]),
+        createCard("Cockroach", 1, 1, 4, "bones", ["Unkillable"]),
+        createCard("Dire Wolf Pup", 1, 2, 2, "blood", ["Fledgling"]),
+        createCard("Vulture", 3, 1, 2, "blood", ["Scavenger"]),
+        createCard("Mole Man", 0, 6, 1, "blood", ["Burrower", "Mighty Leap", "Repulsive"])
+      ],
+      openingQueue: () => [null, createCard("Dire Wolf Pup", 1, 2, 2, "blood", ["Fledgling"]), null, null],
+      minTier: 1
+    },
+    {
+      key: "snowline-bones",
+      name: "Carrion Court",
+      summary: "Bone engines trade bodies for tempo until an elite closes the fight.",
+      laneOrder: [3, 1, 2, 0],
+      deck: () => [
+        createCard("Rat King", 2, 1, 2, "blood", ["Bone King"]),
+        createCard("Cockroach", 1, 1, 4, "bones", ["Unkillable"]),
+        createCard("Bone Heap", 1, 2, 2, "bones", ["Sharp Quills"]),
+        createCard("Vulture", 3, 1, 2, "blood", ["Scavenger"]),
+        createCard("Wolverine", 2, 3, 2, "blood", ["Blood Lust"]),
+        createCard("Grizzly Bear", 4, 6, 3, "blood", [])
+      ],
+      openingBoard: () => [null, null, createCard("Rat King", 2, 1, 2, "blood", ["Bone King"]), null],
+      minTier: 2
+    }
+  ]
 };
 
 const state = createInitialState();
@@ -291,6 +456,8 @@ function createInitialState() {
     },
     meta: {
       lifetimeRuns: 0,
+      completedRuns: 0,
+      completedBosses: 0,
       unlockedStarterKeys: ["classic"],
       activeStarterKey: "classic"
     }
@@ -314,7 +481,11 @@ function createBattleState() {
     nodeType: "BATTLE",
     bossType: null,
     bossPhase: 1,
-    anglerHookUsed: false
+    anglerHookUsed: false,
+    encounterKey: "standard",
+    encounterName: "Trail Encounter",
+    encounterDescription: "",
+    queueOrder: null
   };
 }
 
@@ -362,12 +533,41 @@ function getStarterUnlockLabel(key) {
   return STARTER_UNLOCKS[key]?.label || "Classic";
 }
 
+function getStarterItems(key) {
+  const items = [copyItem(ITEM_DEFS.squirrelBottle)];
+  if (key === "supply") {
+    items.push(copyItem(ITEM_DEFS.pliers));
+  }
+  if (key === "ritual") {
+    items.push(copyItem(ITEM_DEFS.blackGoatBottle));
+  }
+  return items;
+}
+
 function getNextStarterUnlockKey() {
   const keys = Array.isArray(state.meta?.unlockedStarterKeys) && state.meta.unlockedStarterKeys.length
     ? state.meta.unlockedStarterKeys
     : ["classic"];
   const offset = Math.max((state.meta?.lifetimeRuns || 1) - 1, 0);
   return keys[offset % keys.length];
+}
+
+function applyMetaUnlockProgress() {
+  if ((state.meta?.lifetimeRuns || 0) >= 2 || state.battlesWon > 0) {
+    unlockStarter("bones");
+  }
+  if ((state.meta?.lifetimeRuns || 0) >= 3) {
+    unlockStarter("ants");
+  }
+  if ((state.meta?.lifetimeRuns || 0) >= 5) {
+    unlockStarter("supply");
+  }
+  if ((state.meta?.completedBosses || 0) >= 1) {
+    unlockStarter("sky");
+  }
+  if ((state.meta?.completedBosses || 0) >= 3 || (state.meta?.completedRuns || 0) >= 1) {
+    unlockStarter("ritual");
+  }
 }
 
 function unlockStarter(key) {
@@ -384,14 +584,15 @@ function unlockStarter(key) {
 
 function startNewRun() {
   const fresh = createInitialState();
-  const previousMeta = Object.assign({ lifetimeRuns: 0, unlockedStarterKeys: ["classic"], activeStarterKey: "classic" }, state.meta || {});
+  const previousMeta = Object.assign({ lifetimeRuns: 0, completedRuns: 0, completedBosses: 0, unlockedStarterKeys: ["classic"], activeStarterKey: "classic" }, state.meta || {});
   Object.assign(state, fresh);
   state.meta = previousMeta;
   state.meta.lifetimeRuns += 1;
+  applyMetaUnlockProgress();
   state.meta.activeStarterKey = getNextStarterUnlockKey();
   state.map = generateMap();
   state.currentDeck = buildStarterDeck();
-  state.items = [copyItem(ITEM_DEFS.squirrelBottle)];
+  state.items = getStarterItems(state.meta.activeStarterKey);
   moveToNode(0);
   appendLog(`Started a new run with ${getStarterUnlockLabel(state.meta.activeStarterKey)}.`);
   enterNode(getCurrentNode());
@@ -437,7 +638,7 @@ function normalizeStateAfterLoad() {
   state.map = Array.isArray(state.map) ? state.map : [];
   state.rewardOptions = Array.isArray(state.rewardOptions) ? state.rewardOptions : [];
   state.tutorial = Object.assign({ dismissed: false }, state.tutorial || {});
-  state.meta = Object.assign({ lifetimeRuns: 0, unlockedStarterKeys: ["classic"], activeStarterKey: "classic" }, state.meta || {});
+  state.meta = Object.assign({ lifetimeRuns: 0, completedRuns: 0, completedBosses: 0, unlockedStarterKeys: ["classic"], activeStarterKey: "classic" }, state.meta || {});
   ensureValidUiState("load");
 }
 
@@ -457,7 +658,7 @@ function generateMap() {
     for (let i = 0; i < nodeCount; i += 1) {
       const node = {
         id: `${region.toLowerCase()}_${i}`,
-        type: selectNodeType(i, nodeCount),
+        type: selectNodeType(region, i, nodeCount),
         region,
         position: nodeIndex,
         regionPosition: i,
@@ -503,28 +704,34 @@ function generateMap() {
   return allNodes;
 }
 
-function selectNodeType(regionPosition, nodeCount) {
+function selectNodeType(region, regionPosition, nodeCount) {
   if (regionPosition === 0 || regionPosition >= nodeCount - 2) {
     return "BATTLE";
   }
 
   const roll = Math.floor(Math.random() * 140);
-  if (roll < 70) {
+  if (roll < 62) {
     return "BATTLE";
   }
-  if (roll < 85) {
+  if (roll < 77) {
     return "CAMPFIRE";
   }
-  if (roll < 95) {
+  if (roll < 89) {
     return "BACKPACK";
   }
-  if (roll < 108) {
+  if (roll < 102) {
     return "SIGIL_TRANSFER";
   }
-  if (roll < 120) {
+  if (roll < 116) {
     return "WOODCARVER";
   }
-  if (roll < 130) {
+  if (roll < 128) {
+    return "MYCOLOGISTS";
+  }
+  if (region === "Wetlands" && roll < 134) {
+    return "BACKPACK";
+  }
+  if (region === "Snowline" && roll < 136) {
     return "MYCOLOGISTS";
   }
   return "ECONOMY";
@@ -599,9 +806,16 @@ function startBattle(node) {
   clearTransientCombatUi();
   state.battle.nodeType = node.type;
   state.battle.bossType = node.type === "BOSS" ? getBossType(node.region) : null;
+  const encounterProfile = getEncounterProfile(node);
+  state.battle.encounterKey = encounterProfile.key;
+  state.battle.encounterName = encounterProfile.name;
+  state.battle.encounterDescription = encounterProfile.summary;
+  state.battle.queueOrder = encounterProfile.laneOrder || null;
   state.battle.hand = [createLibraryCard("squirrel")];
   state.battle.playerDeck = shuffle(state.currentDeck.map(copyCard));
-  state.battle.enemyDeck = shuffle(getEncounterDeck(node).map(copyCard));
+  state.battle.enemyDeck = shuffle(encounterProfile.deck.map(copyCard));
+  state.battle.enemySlots = normalizeEncounterRow(encounterProfile.openingBoard);
+  state.battle.enemyQueue = normalizeEncounterRow(encounterProfile.openingQueue);
 
   drawPlayerCard();
   drawPlayerCard();
@@ -609,56 +823,62 @@ function startBattle(node) {
   fillEnemyQueue();
   state.battle.awaitingDrawChoice = false;
   setBattlePhase(node.type === "BOSS" ? `${getBossDisplayName()} awaits` : "Battle Ready", node.type === "BOSS" ? "enemy" : "neutral");
-  showTransientMessage(node.type === "BOSS" ? `${getBossDisplayName()} enters the fight.` : `Battle begins in ${node.region}.`, node.type === "BOSS" ? "enemy" : "neutral", 1800);
+  showTransientMessage(node.type === "BOSS" ? `${getBossDisplayName()} enters the fight.` : `${encounterProfile.name} begins.`, node.type === "BOSS" ? "enemy" : "neutral", 1800);
 
   appendLog(`Entered ${node.type === "BOSS" ? "a boss battle" : "a battle"} in ${node.region}.`);
   render();
 }
 
-function getEncounterDeck(node) {
-  const idx = node.position;
+function getEncounterProfile(node) {
   if (node.type === "BOSS") {
-    return getBossDeck(getBossType(node.region), 1);
+    return {
+      key: `${node.region.toLowerCase()}-boss`,
+      name: `${getBossDisplayName()} Encounter`,
+      summary: getEncounterIdentityText().long,
+      laneOrder: getBossQueueOrder(getBossType(node.region)),
+      deck: getBossDeck(getBossType(node.region), 1),
+      openingBoard: [null, null, null, null],
+      openingQueue: [null, null, null, null]
+    };
   }
 
-  if (idx < 6) {
-    return [
-      createCard("Adder", 1, 1, 1, "blood", []),
-      createCard("Bullfrog", 1, 2, 1, "blood", ["Mighty Leap"]),
-      createCard("Stoat", 1, 3, 1, "blood", []),
-      createCard("Elk", 1, 4, 1, "blood", []),
-      createCard("Mole", 0, 4, 2, "blood", ["Burrower"]),
-      createCard("Skeleton", 1, 1, 1, "bones", []),
-      createCard("Skunk", 0, 3, 1, "blood", ["Stinky"]),
-      createCard("Otter", 1, 1, 1, "blood", ["Waterborne"])
-    ];
-  }
+  const tier = getEncounterTier(node);
+  const pool = (ENCOUNTER_LIBRARY[node.region] || []).filter((entry) => tier >= (entry.minTier || 0));
+  const chosen = pool[Math.floor(Math.random() * pool.length)] || {
+    key: "fallback",
+    name: `${node.region} Battle`,
+    summary: "A standard trail fight.",
+    laneOrder: [0, 1, 2, 3],
+    deck: () => [createCard("Stoat", 1, 3, 1, "blood", []), createCard("Bullfrog", 1, 2, 1, "blood", ["Mighty Leap"])],
+    openingBoard: () => [null, null, null, null],
+    openingQueue: () => [null, null, null, null]
+  };
+  return {
+    key: chosen.key,
+    name: chosen.name,
+    summary: chosen.summary,
+    laneOrder: chosen.laneOrder || [0, 1, 2, 3],
+    deck: chosen.deck(),
+    openingBoard: chosen.openingBoard ? chosen.openingBoard() : [null, null, null, null],
+    openingQueue: chosen.openingQueue ? chosen.openingQueue() : [null, null, null, null]
+  };
+}
 
-  if (idx < 11) {
-    return [
-      createCard("Wolf", 3, 2, 2, "blood", []),
-      createCard("Raven", 2, 3, 2, "blood", ["Airborne"]),
-      createCard("Bloodhound", 2, 3, 2, "blood", ["Guardian"]),
-      createCard("Coyote", 2, 1, 4, "bones", []),
-      createCard("Alpha", 1, 2, 2, "blood", ["Leader"]),
-      createCard("Mole", 0, 4, 2, "blood", ["Burrower"]),
-      createCard("Beehive", 0, 2, 1, "blood", ["Bees Within"]),
-      createCard("Vulture", 3, 1, 2, "blood", ["Scavenger"]),
-      createCard("Wolverine", 2, 3, 2, "blood", ["Blood Lust"])
-    ];
-  }
+function normalizeEncounterRow(row = []) {
+  return [0, 1, 2, 3].map((index) => row[index] ? copyCard(row[index]) : null);
+}
 
-  return [
-    createCard("Grizzly Bear", 4, 6, 3, "blood", []),
-    createCard("Mantis God", 2, 1, 3, "blood", ["Double Strike"]),
-    createCard("Wolf", 3, 2, 2, "blood", []),
-    createCard("Raven", 2, 3, 2, "blood", ["Airborne"]),
-    createCard("Mantis", 1, 1, 1, "blood", ["Bifurcated Strike"]),
-    createCard("Bone Heap", 1, 2, 2, "bones", ["Sharp Quills"]),
-    createCard("Cockroach", 1, 1, 4, "bones", ["Unkillable"]),
-    createCard("Mole Man", 0, 6, 1, "blood", ["Burrower", "Mighty Leap", "Repulsive"]),
-    createCard("Bone Lord", 1, 2, 1, "blood", ["Bone King"])
-  ];
+function getEncounterTier(node) {
+  const regionDepth = node.regionPosition / Math.max(REGIONS.includes(node.region) ? state.map.filter((entry) => entry.region === node.region).length - 1 : 1, 1);
+  const regionRank = REGIONS.indexOf(node.region);
+  return Math.min(2, Math.floor(regionDepth * 3) + Math.max(regionRank, 0));
+}
+
+function getBossQueueOrder(bossType) {
+  if (bossType === "PROSPECTOR") return [1, 2, 0, 3];
+  if (bossType === "ANGLER") return [0, 3, 1, 2];
+  if (bossType === "TRAPPER_TRADER") return [0, 2, 1, 3];
+  return [0, 1, 2, 3];
 }
 
 function createLibraryCard(key) {
@@ -741,14 +961,15 @@ function showCardReward() {
 function pickRewardCard() {
   const node = getCurrentNode();
   const progress = node ? node.position / Math.max(state.map.length - 1, 1) : 0;
+  const metaBoost = Math.min(state.meta?.completedBosses || 0, 2);
   const roll = Math.floor(Math.random() * 100);
   let rarity = "Common";
   if (progress > 0.7) {
-    rarity = roll < 45 ? "Common" : roll < 82 ? "Uncommon" : "Rare";
+    rarity = roll < 45 - metaBoost * 4 ? "Common" : roll < 82 - metaBoost * 3 ? "Uncommon" : "Rare";
   } else if (progress > 0.35) {
-    rarity = roll < 58 ? "Common" : roll < 88 ? "Uncommon" : "Rare";
+    rarity = roll < 58 - metaBoost * 3 ? "Common" : roll < 88 - metaBoost * 2 ? "Uncommon" : "Rare";
   } else {
-    rarity = roll < 70 ? "Common" : roll < 92 ? "Uncommon" : "Rare";
+    rarity = roll < 70 - metaBoost * 2 ? "Common" : roll < 92 - metaBoost ? "Uncommon" : "Rare";
   }
   return pickRewardCardForTier(rarity);
 }
@@ -771,28 +992,33 @@ function showMapSelection() {
 }
 
 function showCampfireEvent() {
+  const variant = getCampfireVariant();
   state.mode = "campfire";
-  state.currentScreen = "Campfire";
-  state.eventState = { type: "campfire", step: "chooseCard", selectedCardIndex: null };
+  state.currentScreen = variant.title;
+  state.eventState = { type: "campfire", step: "chooseCard", selectedCardIndex: null, variant: variant.key, description: variant.description };
   render();
 }
 
 function showBackpackEvent() {
+  const config = getBackpackEventConfig();
   state.mode = "backpack";
-  state.currentScreen = "Backpack";
-  state.eventState = { type: "backpack", options: shuffle(Object.values(ITEM_DEFS)).slice(0, 3).map(copyItem) };
+  state.currentScreen = config.title;
+  state.eventState = { type: "backpack", options: config.options, description: config.description, picksRemaining: config.picksRemaining };
   render();
 }
 
 function showSigilTransferEvent() {
   const hasDonors = state.currentDeck.some((card) => card.sigils.length > 0);
+  const ritual = getSigilEventConfig();
   state.mode = "sigil";
-  state.currentScreen = "Ritual Stones";
+  state.currentScreen = ritual.title;
   state.eventState = {
     type: "sigil",
     step: hasDonors ? "chooseDonor" : "empty",
     donorIndex: null,
-    sigil: null
+    sigil: null,
+    ritual: ritual.key,
+    description: ritual.description
   };
   if (!hasDonors) {
     appendLog("No card in your deck has a sigil to transfer.");
@@ -801,37 +1027,169 @@ function showSigilTransferEvent() {
 }
 
 function showWoodcarverEvent() {
+  const config = getWoodcarverConfig();
   state.mode = "woodcarver";
-  state.currentScreen = "Totem Builder";
+  state.currentScreen = config.title;
   state.eventState = {
     type: "woodcarver",
     step: "chooseSigil",
-    offeredSigils: shuffle(SIGIL_STONE_POOL).slice(0, 3),
-    chosenSigil: null
+    offeredSigils: shuffle(SIGIL_STONE_POOL).slice(0, config.offerCount),
+    chosenSigil: null,
+    boon: config.key,
+    description: config.description
   };
   render();
 }
 
 function showMycologistsEvent() {
+  const config = getMycologistConfig();
   state.mode = "mycologists";
-  state.currentScreen = "Card Merge";
+  state.currentScreen = config.title;
   state.eventState = {
     type: "mycologists",
-    pairs: findMergePairs()
+    pairs: findMergePairs(),
+    fusion: config.key,
+    description: config.description
   };
   render();
 }
 
 function showTraderEvent() {
+  const config = getTraderConfig();
   state.mode = "economy";
-  state.currentScreen = "Trader";
+  state.currentScreen = config.title;
   state.eventState = {
     type: "economy",
     step: "chooseSacrifice",
     tradeOutIndex: null,
-    offers: [pickRewardCardForTier("Uncommon"), pickRewardCardForTier("Uncommon"), pickRewardCardForTier("Rare")]
+    offers: config.offers,
+    haggling: config.key,
+    description: config.description
   };
   render();
+}
+
+function getNodeProgress(node = getCurrentNode()) {
+  return node ? node.position / Math.max(state.map.length - 1, 1) : 0;
+}
+
+function getCampfireVariant() {
+  const region = getCurrentNode()?.region;
+  const progress = getNodeProgress();
+  if (region === "Snowline" || progress > 0.6) {
+    return {
+      key: "hungry",
+      title: "Hungry Campfire",
+      description: "The flames burn bright. Larger gains are possible, but the card may come away singed."
+    };
+  }
+  return {
+    key: "steady",
+    title: "Campfire",
+    description: "A steady flame offers a reliable blessing."
+  };
+}
+
+function getBackpackEventConfig() {
+  const region = getCurrentNode()?.region;
+  const progress = getNodeProgress();
+  const pool = getRegionItemPool(region);
+  return {
+    title: progress > 0.55 ? "Supply Cache" : "Backpack",
+    description: progress > 0.55 ? "A deeper cache lets you pack two tools for the road." : "Choose one tool to bring into the next fights.",
+    picksRemaining: progress > 0.55 ? 2 : 1,
+    options: shuffle(pool).slice(0, progress > 0.55 ? 4 : 3).map(copyItem)
+  };
+}
+
+function getRegionItemPool(region) {
+  const items = [ITEM_DEFS.squirrelBottle, ITEM_DEFS.pliers, ITEM_DEFS.hourglass, ITEM_DEFS.fan, ITEM_DEFS.boneJar, ITEM_DEFS.blackGoatBottle];
+  if (region === "Wetlands") {
+    return [ITEM_DEFS.hourglass, ITEM_DEFS.fan, ITEM_DEFS.boneJar, ITEM_DEFS.squirrelBottle, ITEM_DEFS.pliers];
+  }
+  if (region === "Snowline") {
+    return [ITEM_DEFS.pliers, ITEM_DEFS.blackGoatBottle, ITEM_DEFS.boneJar, ITEM_DEFS.hourglass, ITEM_DEFS.fan];
+  }
+  return items;
+}
+
+function getSigilEventConfig() {
+  const progress = getNodeProgress();
+  if (progress > 0.55) {
+    return {
+      key: "echo",
+      title: "Echo Stones",
+      description: "The donor survives, but the chosen sigil is carved away and echoed onto another card."
+    };
+  }
+  return {
+    key: "sever",
+    title: "Ritual Stones",
+    description: "The donor is consumed so another card may inherit its sigil."
+  };
+}
+
+function getWoodcarverConfig() {
+  const region = getCurrentNode()?.region;
+  if (region === "Snowline") {
+    return {
+      key: "fortified",
+      title: "Totem Builder",
+      description: "The carver reinforces the chosen creature with an extra point of health.",
+      offerCount: 4
+    };
+  }
+  return {
+    key: "etched",
+    title: "Totem Builder",
+    description: "Choose one sigil stone to carve into a creature.",
+    offerCount: 3
+  };
+}
+
+function getMycologistConfig() {
+  const progress = getNodeProgress();
+  if (progress > 0.55) {
+    return {
+      key: "masterwork",
+      title: "Master Mycologists",
+      description: "Late-stage stitching yields a more dramatic fusion."
+    };
+  }
+  return {
+    key: "stitch",
+    title: "Card Merge",
+    description: "Fuse duplicate cards into one stronger specimen."
+  };
+}
+
+function getTraderConfig() {
+  const progress = getNodeProgress();
+  return {
+    key: progress > 0.6 ? "lavish" : "standard",
+    title: progress > 0.6 ? "High Trader" : "Trader",
+    description: progress > 0.6 ? "Late traders demand a card first, then reveal premium stock." : "Trade one card away for a curated offer.",
+    offers: [pickRewardCardForTier("Uncommon"), pickRewardCardForTier("Uncommon"), pickRewardCardForTier(progress > 0.6 ? "Rare" : "Uncommon")]
+  };
+}
+
+function buildTraderOffers(tradedCard, haggling = "standard") {
+  const rareChance = haggling === "lavish";
+  const matchingPool = REWARD_POOL.filter((entry) =>
+    entry.card.costType === tradedCard.costType
+    || entry.card.sigils.some((sigil) => tradedCard.sigils.includes(sigil))
+  );
+  const rarePool = REWARD_POOL.filter((entry) => entry.rarity === "Rare");
+  const uncommonPool = REWARD_POOL.filter((entry) => entry.rarity === "Uncommon");
+  const offers = [];
+  const first = matchingPool.length ? matchingPool[Math.floor(Math.random() * matchingPool.length)] : uncommonPool[Math.floor(Math.random() * uncommonPool.length)];
+  offers.push({ card: copyCard(first.card), rarity: first.rarity });
+  const second = uncommonPool[Math.floor(Math.random() * uncommonPool.length)];
+  offers.push({ card: copyCard(second.card), rarity: second.rarity });
+  const finisherPool = rareChance ? rarePool : [...uncommonPool, ...rarePool];
+  const third = finisherPool[Math.floor(Math.random() * finisherPool.length)];
+  offers.push({ card: copyCard(third.card), rarity: third.rarity });
+  return offers;
 }
 
 async function endTurn() {
@@ -940,6 +1298,25 @@ function evolveCard(slots, index) {
     card.attack = 3;
     card.health = 2;
     card.cost = 2;
+  } else if (card.name === "Raven Egg") {
+    card.name = "Raven";
+    card.attack = 2;
+    card.health = 3;
+    card.cost = 2;
+    card.sigils.push("Airborne");
+  } else if (card.name === "Elk Fawn") {
+    card.name = "Elk";
+    card.attack = 2;
+    card.health = 4;
+    card.cost = 2;
+  } else if (card.name === "Dire Wolf Pup") {
+    card.name = "Dire Wolf";
+    card.attack = 2;
+    card.health = 5;
+    card.cost = 3;
+    if (!card.sigils.includes("Double Strike")) {
+      card.sigils.push("Double Strike");
+    }
   } else {
     card.attack += 1;
     card.health += 1;
@@ -1151,12 +1528,10 @@ function checkBattleEnd() {
       node.completed = true;
     }
     state.battlesWon += 1;
-    if (state.battlesWon >= 1) {
-      unlockStarter("bones");
-    }
     if (state.battle.nodeType === "BOSS") {
-      unlockStarter("sky");
+      state.meta.completedBosses = (state.meta.completedBosses || 0) + 1;
     }
+    applyMetaUnlockProgress();
     state.currentRound += 1;
     state.cumulativeDamageDealt += state.battle.playerDamage;
     state.cumulativeDamageReceived += state.battle.enemyDamage;
@@ -1216,6 +1591,7 @@ function getBossDisplayName() {
 
 function refillBossEnemyDeck() {
   state.battle.enemyDeck = shuffle(getBossDeck(state.battle.bossType, 2).map(copyCard));
+  state.battle.queueOrder = getBossQueueOrder(state.battle.bossType);
   fillEnemyQueue();
 }
 
@@ -1239,6 +1615,8 @@ function clearEnemyBoardAndQueue() {
 }
 
 function showRunComplete() {
+  state.meta.completedRuns = (state.meta.completedRuns || 0) + 1;
+  applyMetaUnlockProgress();
   state.mode = "complete";
   state.currentScreen = "Run Complete";
   state.eventState = { type: "complete" };
@@ -1279,62 +1657,76 @@ function restoreNodeScreenState(node) {
   }
 
   if (node.type === "CAMPFIRE") {
+    const variant = getCampfireVariant();
     state.mode = "campfire";
-    state.currentScreen = "Campfire";
-    state.eventState = { type: "campfire", step: "chooseCard", selectedCardIndex: null };
+    state.currentScreen = variant.title;
+    state.eventState = { type: "campfire", step: "chooseCard", selectedCardIndex: null, variant: variant.key, description: variant.description };
     return;
   }
 
   if (node.type === "BACKPACK") {
+    const config = getBackpackEventConfig();
     state.mode = "backpack";
-    state.currentScreen = "Backpack";
-    state.eventState = { type: "backpack", options: shuffle(Object.values(ITEM_DEFS)).slice(0, 3).map(copyItem) };
+    state.currentScreen = config.title;
+    state.eventState = { type: "backpack", options: config.options, description: config.description, picksRemaining: config.picksRemaining };
     return;
   }
 
   if (node.type === "SIGIL_TRANSFER") {
     const hasDonors = state.currentDeck.some((card) => card.sigils.length > 0);
+    const ritual = getSigilEventConfig();
     state.mode = "sigil";
-    state.currentScreen = "Ritual Stones";
+    state.currentScreen = ritual.title;
     state.eventState = {
       type: "sigil",
       step: hasDonors ? "chooseDonor" : "empty",
       donorIndex: null,
-      sigil: null
+      sigil: null,
+      ritual: ritual.key,
+      description: ritual.description
     };
     return;
   }
 
   if (node.type === "WOODCARVER") {
+    const config = getWoodcarverConfig();
     state.mode = "woodcarver";
-    state.currentScreen = "Totem Builder";
+    state.currentScreen = config.title;
     state.eventState = {
       type: "woodcarver",
       step: "chooseSigil",
-      offeredSigils: shuffle(SIGIL_STONE_POOL).slice(0, 3),
-      chosenSigil: null
+      offeredSigils: shuffle(SIGIL_STONE_POOL).slice(0, config.offerCount),
+      chosenSigil: null,
+      boon: config.key,
+      description: config.description
     };
     return;
   }
 
   if (node.type === "MYCOLOGISTS") {
+    const config = getMycologistConfig();
     state.mode = "mycologists";
-    state.currentScreen = "Card Merge";
+    state.currentScreen = config.title;
     state.eventState = {
       type: "mycologists",
-      pairs: findMergePairs()
+      pairs: findMergePairs(),
+      fusion: config.key,
+      description: config.description
     };
     return;
   }
 
   if (node.type === "ECONOMY") {
+    const config = getTraderConfig();
     state.mode = "economy";
-    state.currentScreen = "Trader";
+    state.currentScreen = config.title;
     state.eventState = {
       type: "economy",
       step: "chooseSacrifice",
       tradeOutIndex: null,
-      offers: [pickRewardCardForTier("Uncommon"), pickRewardCardForTier("Uncommon"), pickRewardCardForTier("Rare")]
+      offers: config.offers,
+      haggling: config.key,
+      description: config.description
     };
     return;
   }
@@ -1462,6 +1854,9 @@ function fillEnemyQueue() {
 }
 
 function getPreferredEnemyQueueOrder() {
+  if (Array.isArray(state.battle.queueOrder) && state.battle.queueOrder.length === 4) {
+    return state.battle.queueOrder;
+  }
   if (state.battle.bossType === "PROSPECTOR") {
     return [1, 2, 0, 3];
   }
@@ -1815,12 +2210,17 @@ function applyCampfireBuff(kind) {
   if (!card) {
     return;
   }
+  const risky = state.eventState.variant === "hungry";
   if (kind === "power") {
-    card.attack += 1;
-    appendLog(`${card.name} gained 1 power at the campfire.`);
+    card.attack += risky ? 2 : 1;
+    appendLog(`${card.name} gained ${risky ? 2 : 1} power at the campfire.`);
   } else {
-    card.health += 2;
-    appendLog(`${card.name} gained 2 health at the campfire.`);
+    card.health += risky ? 3 : 2;
+    appendLog(`${card.name} gained ${risky ? 3 : 2} health at the campfire.`);
+  }
+  if (risky && Math.random() < 0.28) {
+    card.health = Math.max(1, card.health - 1);
+    appendLog(`${card.name} was singed by the hungry fire and lost 1 health.`);
   }
   completeCurrentEvent();
 }
@@ -1832,6 +2232,12 @@ function chooseBackpackItem(index) {
   }
   state.items.push(copyItem(item));
   appendLog(`Packed ${item.name}.`);
+  state.eventState.options.splice(index, 1);
+  state.eventState.picksRemaining = Math.max((state.eventState.picksRemaining || 1) - 1, 0);
+  if (state.eventState.picksRemaining > 0 && state.eventState.options.length) {
+    render();
+    return;
+  }
   completeCurrentEvent();
 }
 
@@ -1856,8 +2262,13 @@ function chooseSigilReceiver(index) {
     return;
   }
   receiver.sigils.push(sigil);
-  state.currentDeck.splice(donorIndex, 1);
-  appendLog(`${receiver.name} inherited ${sigil}.`);
+  if (state.eventState.ritual === "echo") {
+    donor.sigils = donor.sigils.filter((entry) => entry !== sigil);
+    appendLog(`${receiver.name} echoed ${sigil} from ${donor.name}.`);
+  } else {
+    state.currentDeck.splice(donorIndex, 1);
+    appendLog(`${receiver.name} inherited ${sigil}.`);
+  }
   completeCurrentEvent();
 }
 
@@ -1874,6 +2285,9 @@ function chooseWoodcarverReceiver(index) {
     return;
   }
   card.sigils.push(sigil);
+  if (state.eventState.boon === "fortified") {
+    card.health += 1;
+  }
   appendLog(`${card.name} gained ${sigil}.`);
   completeCurrentEvent();
 }
@@ -1907,8 +2321,8 @@ function chooseMergePair(pairIndex) {
   if (!base || !other) {
     return;
   }
-  base.attack += 1;
-  base.health += 2;
+  base.attack += state.eventState.fusion === "masterwork" ? 2 : 1;
+  base.health += state.eventState.fusion === "masterwork" ? 3 : 2;
   other.sigils.forEach((sigil) => {
     if (!base.sigils.includes(sigil)) {
       base.sigils.push(sigil);
@@ -1921,6 +2335,7 @@ function chooseMergePair(pairIndex) {
 
 function chooseTraderSacrifice(index) {
   state.eventState.tradeOutIndex = index;
+  state.eventState.offers = buildTraderOffers(state.currentDeck[index], state.eventState.haggling);
   state.eventState.step = "chooseReward";
   render();
 }
@@ -1935,6 +2350,11 @@ function chooseTraderOffer(index) {
   state.currentDeck.splice(tradeOutIndex, 1);
   state.currentDeck.push(copyCard(offer.card));
   appendLog(`Traded ${tradedCard.name} for ${offer.card.name}.`);
+  if (state.eventState.haggling === "lavish") {
+    const extra = copyItem(shuffle(getRegionItemPool(getCurrentNode()?.region)).slice(0, 1)[0] || ITEM_DEFS.squirrelBottle);
+    state.items.push(extra);
+    appendLog(`The trader also tossed in ${extra.name}.`);
+  }
   completeCurrentEvent();
 }
 
@@ -2842,7 +3262,7 @@ function formatNameList(names) {
 
 function getEncounterIdentityText() {
   if (state.mode !== "battle") {
-    return { short: "Reading the next enemy turn", long: "" };
+    return { short: "Run Planning", long: "" };
   }
   if (state.battle.bossType === "PROSPECTOR") {
     return {
@@ -2860,6 +3280,12 @@ function getEncounterIdentityText() {
     return {
       short: `Trader phase ${state.battle.bossPhase}`,
       long: state.battle.bossPhase === 1 ? "Traps punish direct lanes before the trade begins." : "Heavy split attacks and fliers close the fight."
+    };
+  }
+  if (state.battle.encounterName) {
+    return {
+      short: state.battle.encounterName,
+      long: state.battle.encounterDescription || "Watch the queue and lean into the region's rhythm."
     };
   }
   const region = getCurrentNode()?.region || "the trail";
@@ -3094,7 +3520,7 @@ function renderChoiceScreen() {
   }
 
   if (state.mode === "backpack") {
-    refs.choiceSummary.innerHTML = `<p class="choice-copy">Pick one item to carry into future battles.</p>`;
+    refs.choiceSummary.innerHTML = `<p class="choice-copy">${escapeHtml(state.eventState.description || "Pick one item to carry into future battles.")} ${escapeHtml((state.eventState.picksRemaining || 1) > 1 ? `${state.eventState.picksRemaining} picks remain.` : "")}</p>`;
     state.eventState.options.forEach((item, index) => {
       refs.choiceActions.appendChild(createActionChoice(item.name, item.description, () => chooseBackpackItem(index)));
     });
@@ -3139,7 +3565,7 @@ function renderChoiceScreen() {
 
 function renderCampfireChoices() {
   if (state.eventState.step === "chooseCard") {
-    refs.choiceSummary.innerHTML = `<p class="choice-copy">Choose one card to improve.</p>`;
+    refs.choiceSummary.innerHTML = `<p class="choice-copy">${escapeHtml(state.eventState.description || "Choose one card to improve.")}</p>`;
     state.currentDeck.forEach((card, index) => {
       const button = document.createElement("button");
       button.className = "choice-card card-choice";
@@ -3152,9 +3578,10 @@ function renderCampfireChoices() {
   }
 
   const card = state.currentDeck[state.eventState.selectedCardIndex];
-  refs.choiceSummary.innerHTML = `<p class="choice-copy">Warm the ${escapeHtml(card ? card.name : "card")}.</p>`;
-  refs.choiceActions.appendChild(createActionChoice("Increase Power", "+1 attack", () => applyCampfireBuff("power")));
-  refs.choiceActions.appendChild(createActionChoice("Increase Health", "+2 health", () => applyCampfireBuff("health")));
+  const risky = state.eventState.variant === "hungry";
+  refs.choiceSummary.innerHTML = `<p class="choice-copy">Warm the ${escapeHtml(card ? card.name : "card")}. ${escapeHtml(state.eventState.description || "")}</p>`;
+  refs.choiceActions.appendChild(createActionChoice("Increase Power", risky ? "+2 attack, may be singed" : "+1 attack", () => applyCampfireBuff("power")));
+  refs.choiceActions.appendChild(createActionChoice("Increase Health", risky ? "+3 health, may be singed" : "+2 health", () => applyCampfireBuff("health")));
 }
 
 function renderSigilChoices() {
@@ -3168,7 +3595,7 @@ function renderSigilChoices() {
   }
 
   if (state.eventState.step === "chooseDonor") {
-    refs.choiceSummary.innerHTML = `<p class="choice-copy">Choose a donor card. It will be removed after the transfer.</p>`;
+    refs.choiceSummary.innerHTML = `<p class="choice-copy">${escapeHtml(state.eventState.description || "Choose a donor card.")}</p>`;
     state.currentDeck.forEach((card, index) => {
       if (!card.sigils.length) {
         return;
@@ -3207,7 +3634,7 @@ function renderSigilChoices() {
 
 function renderWoodcarverChoices() {
   if (state.eventState.step === "chooseSigil") {
-    refs.choiceSummary.innerHTML = `<p class="choice-copy">Choose a sigil stone to carve into a card.</p>`;
+    refs.choiceSummary.innerHTML = `<p class="choice-copy">${escapeHtml(state.eventState.description || "Choose a sigil stone to carve into a card.")}</p>`;
     state.eventState.offeredSigils.forEach((sigil) => {
       refs.choiceActions.appendChild(createActionChoice(sigil, "Add this sigil to one card in your deck.", () => chooseWoodcarverSigil(sigil)));
     });
@@ -3236,7 +3663,7 @@ function renderMycologistChoices() {
     return;
   }
 
-  refs.choiceSummary.innerHTML = `<p class="choice-copy">Choose a matching pair to merge into one stronger card.</p>`;
+  refs.choiceSummary.innerHTML = `<p class="choice-copy">${escapeHtml(state.eventState.description || "Choose a matching pair to merge into one stronger card.")}</p>`;
   pairs.forEach((pair, index) => {
     const first = state.currentDeck[pair.indexes[0]];
     const second = state.currentDeck[pair.indexes[1]];
@@ -3246,7 +3673,7 @@ function renderMycologistChoices() {
 
 function renderTraderChoices() {
   if (state.eventState.step === "chooseSacrifice") {
-    refs.choiceSummary.innerHTML = `<p class="choice-copy">Choose one card to trade away.</p>`;
+    refs.choiceSummary.innerHTML = `<p class="choice-copy">${escapeHtml(state.eventState.description || "Choose one card to trade away.")}</p>`;
     state.currentDeck.forEach((card, index) => {
       const button = document.createElement("button");
       button.className = "choice-card card-choice";
@@ -3272,7 +3699,7 @@ function renderTraderChoices() {
 function createNodeChoice(node, onClick) {
   const button = document.createElement("button");
   button.className = "choice-card node-choice";
-  button.innerHTML = `<strong>${escapeHtml(getNodeDisplayName(node.type))}</strong><span class="choice-copy">${escapeHtml(node.region)} | Node ${node.position + 1}</span><span class="choice-copy">${escapeHtml(getNodeSummary(node.type))}</span>`;
+  button.innerHTML = `<strong>${escapeHtml(getNodeDisplayName(node.type))}</strong><span class="choice-copy">${escapeHtml(node.region)} | Node ${node.position + 1}</span><span class="choice-copy">${escapeHtml(getNodeSummary(node.type, node.region))}</span>`;
   button.addEventListener("click", onClick);
   return button;
 }
@@ -3289,7 +3716,13 @@ function getNodeDisplayName(type) {
   return NODE_META[type]?.label || type;
 }
 
-function getNodeSummary(type) {
+function getNodeSummary(type, region = "") {
+  if (type === "BATTLE" && region === "Wetlands") {
+    return "Expect awkward water lanes and airborne pressure.";
+  }
+  if (type === "BATTLE" && region === "Snowline") {
+    return "Late enemies carry heavier sigils and stronger stats.";
+  }
   return NODE_META[type]?.summary || "Continue the run.";
 }
 
@@ -3300,6 +3733,7 @@ function renderRunInfo() {
     <strong>${escapeHtml(`Round ${state.currentRound} | Battles won ${state.battlesWon}`)}</strong><br>
     ${escapeHtml(`Deck size ${state.currentDeck.length} | Items ${state.items.length}${bossText}`)}<br>
     ${escapeHtml(`Starter boon ${getStarterUnlockLabel(state.meta?.activeStarterKey || "classic")} | Unlocked ${state.meta?.unlockedStarterKeys?.length || 1}`)}<br>
+    ${escapeHtml(`Bosses cleared ${state.meta?.completedBosses || 0} | Runs cleared ${state.meta?.completedRuns || 0}`)}<br>
     ${escapeHtml(encounter.long || "Continue the run.")}
   `;
 }

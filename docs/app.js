@@ -159,6 +159,8 @@ const uiState = {
   transientMessage: null,
   scaleEffect: null,
   laneEffects: [],
+  turnSummary: null,
+  lastTurnSummary: null,
   effectCounter: 0,
   timers: {
     message: null,
@@ -198,6 +200,9 @@ const refs = {
   battlePhaseChip: document.getElementById("battle-phase-chip"),
   battleTip: document.getElementById("battle-tip"),
   battleBanner: document.getElementById("battle-banner"),
+  intentCaption: document.getElementById("intent-caption"),
+  intentPanel: document.getElementById("intent-panel"),
+  turnRecap: document.getElementById("turn-recap"),
   drawCaption: document.getElementById("draw-caption"),
   runText: document.getElementById("run-text"),
   queueCaption: document.getElementById("queue-caption"),
@@ -786,6 +791,7 @@ async function endTurn() {
   }
 
   uiState.turnAnimating = true;
+  resetTurnSummary();
   setBattlePhase("Player attack phase", "player");
   showTransientMessage("Your side attacks first.", "player", 900);
   render();
@@ -826,6 +832,7 @@ async function endTurn() {
     }
 
     advanceEnemyBoard();
+    finalizeTurnSummary();
     state.battle.awaitingDrawChoice = true;
     setBattlePhase("Choose a draw", "warning");
     state.battle.playerAirborneTurns = Math.max(0, state.battle.playerAirborneTurns - 1);
@@ -945,10 +952,12 @@ async function singleStrike(attackingRow, defendingRow, attackerLane, targetLane
     if (isPlayer) {
       state.battle.playerDamage += attackPower;
       appendLog(`${attacker.name} struck the scale for ${attackPower}.`);
+      noteTurnDirectDamage(true, attackPower);
       showScaleEffect(`+${attackPower}`, "player");
     } else {
       state.battle.enemyDamage += attackPower;
       appendLog(`${attacker.name} dealt ${attackPower} direct damage.`);
+      noteTurnDirectDamage(false, attackPower);
       showScaleEffect(`-${attackPower}`, "enemy");
     }
     queueLaneEffect(isPlayer ? "player" : "enemy", attackerLane, `${attackPower}`, "direct");
@@ -1061,10 +1070,12 @@ function removeDeadCard(row, lane, belongsToPlayer, cause = { kind: "combat", la
   if (!belongsToPlayer && card.name === "Bait Bucket") {
     row[lane] = createLibraryCard("shark");
     appendLog("A shark burst from the bait bucket.");
+    noteTurnSummon("Shark", false);
     queueLaneEffect("enemy", lane, "Shark", "spawn", 1000);
     return;
   }
   onCardRemoved(card, belongsToPlayer, cause);
+  noteTurnDeath(card.name, belongsToPlayer);
   queueLaneEffect(side, lane, `${card.name} down`, "death", 1050);
   appendLog(`${card.name} was destroyed.`);
 }
@@ -1325,6 +1336,7 @@ function advanceEnemyBoard() {
   for (let lane = 0; lane < 4; lane += 1) {
     if (!state.battle.enemySlots[lane] && state.battle.enemyQueue[lane]) {
       state.battle.enemySlots[lane] = state.battle.enemyQueue[lane];
+      noteTurnSummon(state.battle.enemySlots[lane].name, false);
       state.battle.enemyQueue[lane] = null;
       handleGuardianResponse(state.battle.playerSlots, lane);
     }
@@ -1586,6 +1598,8 @@ function runOnCardPlaced(row, lane, belongsToPlayer) {
     return;
   }
 
+  noteTurnSummon(card.name, belongsToPlayer);
+
   if (belongsToPlayer && card.sigils.includes("Ant Spawner")) {
     state.battle.hand.push(createLibraryCard("workerAnt"));
     appendLog("An Ant scurried into your hand.");
@@ -1605,9 +1619,11 @@ function runOnCardPlaced(row, lane, belongsToPlayer) {
 function createAdjacentChimes(row, lane) {
   if (lane > 0 && !row[lane - 1]) {
     row[lane - 1] = createLibraryCard("chime");
+    noteTurnSummon("Chime", true);
   }
   if (lane < row.length - 1 && !row[lane + 1]) {
     row[lane + 1] = createLibraryCard("chime");
+    noteTurnSummon("Chime", true);
   }
   appendLog("Chimes rang out beside the card.");
 }
@@ -1678,6 +1694,7 @@ function getSelectedSacrificeValue() {
 
 function gainBones(amount) {
   state.battle.playerBones += amount;
+  noteTurnBones(amount);
 }
 
 function chooseReward(index) {
@@ -1912,6 +1929,8 @@ function clearTransientCombatUi() {
   uiState.transientMessage = null;
   uiState.scaleEffect = null;
   uiState.laneEffects = [];
+  uiState.turnSummary = createTurnSummary();
+  uiState.lastTurnSummary = null;
   setBattlePhase("Battle Ready", "neutral");
   window.clearTimeout(uiState.timers.message);
   window.clearTimeout(uiState.timers.scale);
@@ -1921,6 +1940,58 @@ function clearTransientCombatUi() {
 
 function setBattlePhase(text, tone = "neutral") {
   uiState.battlePhase = { text, tone };
+}
+
+function createTurnSummary() {
+  return {
+    playerDirect: 0,
+    enemyDirect: 0,
+    playerDeaths: [],
+    enemyDeaths: [],
+    bonesGained: 0,
+    summons: []
+  };
+}
+
+function resetTurnSummary() {
+  uiState.turnSummary = createTurnSummary();
+}
+
+function noteTurnDirectDamage(isPlayer, amount) {
+  if (!uiState.turnSummary) {
+    resetTurnSummary();
+  }
+  if (isPlayer) {
+    uiState.turnSummary.playerDirect += amount;
+  } else {
+    uiState.turnSummary.enemyDirect += amount;
+  }
+}
+
+function noteTurnDeath(cardName, belongsToPlayer) {
+  if (!uiState.turnSummary) {
+    resetTurnSummary();
+  }
+  const list = belongsToPlayer ? uiState.turnSummary.playerDeaths : uiState.turnSummary.enemyDeaths;
+  list.push(cardName);
+}
+
+function noteTurnBones(amount) {
+  if (!uiState.turnSummary) {
+    resetTurnSummary();
+  }
+  uiState.turnSummary.bonesGained += amount;
+}
+
+function noteTurnSummon(cardName, belongsToPlayer) {
+  if (!uiState.turnSummary) {
+    resetTurnSummary();
+  }
+  uiState.turnSummary.summons.push(`${belongsToPlayer ? "You" : "Enemy"}: ${cardName}`);
+}
+
+function finalizeTurnSummary() {
+  uiState.lastTurnSummary = uiState.turnSummary || createTurnSummary();
 }
 
 function showTransientMessage(text, tone = "neutral", duration = 1600) {
@@ -2059,8 +2130,14 @@ function renderBattle() {
   refs.selectionText.textContent = getSelectedHandCard() ? getSelectedHandCard().name : "None";
   refs.selectionHintText.textContent = getSelectionHint();
   refs.itemCountText.textContent = String(state.items.length);
-  refs.queueCaption.textContent = state.battle.enemyDeck.length > 0 ? `${state.battle.enemyDeck.length} cards left in enemy deck` : "Enemy deck empty";
+  refs.queueCaption.textContent = state.battle.skipEnemyAttackPhase
+    ? "Enemy attack is skipped next turn"
+    : state.battle.enemyDeck.length > 0
+      ? `${state.battle.enemyDeck.length} cards left in enemy deck`
+      : "Enemy deck empty";
   renderCombatHud();
+  renderEnemyIntent();
+  renderTurnRecap();
 
   renderLane(refs.enemyQueue, state.battle.enemyQueue, "enemy", null);
   renderLane(refs.enemyBoard, state.battle.enemySlots, "enemy", null);
@@ -2122,6 +2199,156 @@ function getBattleTip() {
     return "Blood cards need sacrifices. Bone cards spend bones. Tap a sigil badge to inspect it.";
   }
   return "Tap a card, then a lane. Tap sigils for details.";
+}
+
+function renderEnemyIntent() {
+  const hint = getEncounterIdentityText();
+  refs.intentCaption.textContent = hint.short;
+  refs.intentPanel.innerHTML = "";
+
+  for (let lane = 0; lane < 4; lane += 1) {
+    const row = document.createElement("div");
+    row.className = "intent-row";
+
+    const label = document.createElement("span");
+    label.className = "intent-lane";
+    label.textContent = `L${lane + 1}`;
+    row.appendChild(label);
+
+    const detail = document.createElement("div");
+    detail.className = "intent-detail";
+    detail.innerHTML = `<strong>${escapeHtml(getLaneIntentLabel(lane))}</strong><span>${escapeHtml(getLaneIntentSubtext(lane))}</span>`;
+    row.appendChild(detail);
+    refs.intentPanel.appendChild(row);
+  }
+}
+
+function getLaneIntentLabel(lane) {
+  const current = state.battle.enemySlots[lane];
+  const queued = state.battle.enemyQueue[lane];
+  if (state.battle.skipEnemyAttackPhase) {
+    return queued ? `${queued.name} waits in queue` : current ? `${current.name} cannot strike next turn` : "No strike next turn";
+  }
+  if (current) {
+    return `${current.name}: ${describeEnemyAttack(current, lane)}`;
+  }
+  if (queued) {
+    return `${queued.name} enters here`;
+  }
+  return "Open lane";
+}
+
+function getLaneIntentSubtext(lane) {
+  const current = state.battle.enemySlots[lane];
+  const queued = state.battle.enemyQueue[lane];
+  const pieces = [];
+  if (current) {
+    pieces.push(describeThreatTag(current));
+  }
+  if (!current && queued) {
+    pieces.push(describeThreatTag(queued));
+  }
+  if (current && queued) {
+    pieces.push(`Next: ${queued.name}`);
+  } else if (!current && !queued) {
+    pieces.push("No queued creature.");
+  }
+  return pieces.join(" | ");
+}
+
+function describeEnemyAttack(card, lane) {
+  const lanes = getAttackLanes(card, lane).map((entry) => entry + 1);
+  const basePower = getAttackPower(card, state.battle.enemySlots, lane, state.battle.playerSlots, lane);
+  const laneText = lanes.length === 1 ? `hits lane ${lanes[0]}` : `hits lanes ${lanes.join("/")}`;
+  const airborneText = card.sigils.includes("Airborne") ? "airborne" : null;
+  return [`${basePower} power`, laneText, airborneText].filter(Boolean).join(", ");
+}
+
+function describeThreatTag(card) {
+  if (card.sigils.includes("Guardian")) return "Guardian";
+  if (card.sigils.includes("Burrower")) return "Burrower";
+  if (card.sigils.includes("Airborne")) return "Airborne";
+  if (card.sigils.includes("Double Strike")) return "Double strike";
+  if (card.sigils.includes("Bifurcated Strike") || card.sigils.includes("Trifurcated Strike")) return "Split attack";
+  return `${card.attack}/${card.health}`;
+}
+
+function renderTurnRecap() {
+  const summary = uiState.lastTurnSummary || uiState.turnSummary || createTurnSummary();
+  refs.turnRecap.innerHTML = "";
+  const lines = buildTurnRecapLines(summary);
+  lines.forEach((lineText) => {
+    const line = document.createElement("div");
+    line.className = "recap-line";
+    line.textContent = lineText;
+    refs.turnRecap.appendChild(line);
+  });
+}
+
+function buildTurnRecapLines(summary) {
+  const lines = [];
+  if (summary.playerDirect > 0) {
+    lines.push(`You dealt ${summary.playerDirect} direct damage.`);
+  }
+  if (summary.enemyDirect > 0) {
+    lines.push(`Enemy dealt ${summary.enemyDirect} direct damage.`);
+  }
+  if (summary.enemyDeaths.length) {
+    lines.push(`Enemy losses: ${formatNameList(summary.enemyDeaths)}.`);
+  }
+  if (summary.playerDeaths.length) {
+    lines.push(`Your losses: ${formatNameList(summary.playerDeaths)}.`);
+  }
+  if (summary.bonesGained > 0) {
+    lines.push(`You gained ${summary.bonesGained} bone${summary.bonesGained === 1 ? "" : "s"}.`);
+  }
+  if (summary.summons.length) {
+    lines.push(`Summons: ${formatNameList(summary.summons)}.`);
+  }
+  if (!lines.length) {
+    lines.push("No resolved turn yet.");
+  }
+  return lines;
+}
+
+function formatNameList(names) {
+  const compact = names.slice(0, 3).join(", ");
+  return names.length > 3 ? `${compact}, +${names.length - 3} more` : compact;
+}
+
+function getEncounterIdentityText() {
+  if (state.mode !== "battle") {
+    return { short: "Reading the next enemy turn", long: "" };
+  }
+  if (state.battle.bossType === "PROSPECTOR") {
+    return {
+      short: `Prospector phase ${state.battle.bossPhase}`,
+      long: state.battle.bossPhase === 1 ? "Pack Mule and guards hold the line before the gold strike." : "Gold has fallen. Expect sturdier follow-up attackers."
+    };
+  }
+  if (state.battle.bossType === "ANGLER") {
+    return {
+      short: `Angler phase ${state.battle.bossPhase}`,
+      long: state.battle.bossPhase === 1 ? "Watch for hook turns and airborne fish slipping over blockers." : "Bait buckets crack into sharks when destroyed."
+    };
+  }
+  if (state.battle.bossType === "TRAPPER_TRADER") {
+    return {
+      short: `Trader phase ${state.battle.bossPhase}`,
+      long: state.battle.bossPhase === 1 ? "Traps punish direct lanes before the trade begins." : "Heavy split attacks and fliers close the fight."
+    };
+  }
+  const region = getCurrentNode()?.region || "the trail";
+  if (region === "Woodlands") {
+    return { short: "Woodlands predators", long: "Early enemies mix cheap blockers with simple lane pressure." };
+  }
+  if (region === "Wetlands") {
+    return { short: "Wetlands tricks", long: "Expect burrowers, guardians, and awkward attack angles." };
+  }
+  if (region === "Snowline") {
+    return { short: "Snowline elites", long: "Late enemies hit harder and stack premium sigils." };
+  }
+  return { short: "Reading the next enemy turn", long: "Watch the queue to plan your next block." };
 }
 
 function getSelectionHint() {
@@ -2485,7 +2712,12 @@ function getNodeSummary(type) {
 
 function renderRunInfo() {
   const bossText = state.mode === "battle" && state.battle.bossType ? ` | Boss phase ${state.battle.bossPhase}` : "";
-  refs.runText.textContent = `Round ${state.currentRound} | Battles won ${state.battlesWon} | Deck size ${state.currentDeck.length} | Items ${state.items.length}${bossText}`;
+  const encounter = getEncounterIdentityText();
+  refs.runText.innerHTML = `
+    <strong>${escapeHtml(`Round ${state.currentRound} | Battles won ${state.battlesWon}`)}</strong><br>
+    ${escapeHtml(`Deck size ${state.currentDeck.length} | Items ${state.items.length}${bossText}`)}<br>
+    ${escapeHtml(encounter.long || "Continue the run.")}
+  `;
 }
 
 function renderDeck() {

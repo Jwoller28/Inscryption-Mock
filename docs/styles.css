@@ -285,6 +285,74 @@ h3 {
   margin-top: 16px;
 }
 
+.battle-insights {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.insight-card {
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(10, 17, 16, 0.62);
+  border: 1px solid rgba(184, 138, 82, 0.16);
+}
+
+.intent-panel,
+.turn-recap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.intent-row,
+.recap-line {
+  border-radius: 12px;
+  background: rgba(20, 34, 31, 0.62);
+}
+
+.intent-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 8px 10px;
+}
+
+.intent-lane {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: rgba(216, 163, 79, 0.18);
+  color: var(--text);
+  font: 700 0.76rem/1 "Trebuchet MS", sans-serif;
+}
+
+.intent-detail strong,
+.intent-detail span {
+  display: block;
+}
+
+.intent-detail strong {
+  font: 700 0.84rem/1.25 "Trebuchet MS", sans-serif;
+  color: var(--text);
+}
+
+.intent-detail span,
+.recap-line {
+  color: var(--muted);
+  font: 0.8rem/1.35 "Trebuchet MS", sans-serif;
+}
+
+.recap-line {
+  padding: 8px 10px;
+}
+
 .info-panel.active {
   display: block;
 }
@@ -1149,6 +1217,25 @@ button:disabled {
   .board-section + .board-section,
   .info-block + .info-block {
     margin-top: 12px;
+  }
+
+  .battle-insights {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .insight-card {
+    padding: 10px;
+  }
+
+  .intent-detail strong {
+    font-size: 0.78rem;
+  }
+
+  .intent-detail span,
+  .recap-line {
+    font-size: 0.74rem;
   }
 
   .section-head {

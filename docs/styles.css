@@ -510,8 +510,9 @@ h3 {
 
 .map-node {
   position: absolute;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 78px;
   height: 78px;
   min-height: 78px;
@@ -596,20 +597,24 @@ h3 {
     linear-gradient(180deg, rgba(175, 136, 66, 0.98), rgba(95, 65, 22, 0.98));
 }
 
-.map-node-icon,
-.map-node-label {
+.map-node-name,
+.map-node-region-tag {
   display: block;
 }
 
-.map-node-icon {
+.map-node-name {
+  max-width: 100%;
+  padding: 0 4px;
   color: #1f140d;
-  font: 700 1.15rem/1 "Franklin Gothic Medium", "Arial Narrow", "Trebuchet MS", sans-serif;
+  font: 700 0.78rem/1.05 "Franklin Gothic Medium", "Arial Narrow", "Trebuchet MS", sans-serif;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  text-align: center;
   text-shadow: 0 1px 0 rgba(255, 240, 209, 0.14);
+  overflow-wrap: anywhere;
 }
 
-.map-node-label {
+.map-node-region-tag {
   position: absolute;
   left: 50%;
   bottom: -24px;

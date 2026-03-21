@@ -3180,8 +3180,8 @@ function renderMapNodes(currentNode, reachablePositions, metrics) {
     button.tabIndex = reachable ? 0 : -1;
     button.setAttribute("aria-disabled", String(!reachable));
     button.innerHTML = [
-      `<span class="map-node-icon">${escapeHtml(getMapNodeGlyph(node.type))}</span>`,
-      `<span class="map-node-label">${escapeHtml(getMapNodeShortLabel(node.type))}</span>`
+      `<span class="map-node-name">${escapeHtml(getMapNodeShortLabel(node.type))}</span>`,
+      `<span class="map-node-region-tag">${escapeHtml(node.region)}</span>`
     ].join("");
     button.setAttribute("aria-label", `${getNodeDisplayName(node.type)} in ${node.region}`);
     if (reachable) {
@@ -3227,10 +3227,6 @@ function getMapNodePoint(node, metrics = getMapMetrics(), edge = "center") {
 function getMapLaneDrift(node) {
   const seed = ((node.position || 0) * 17 + (node.column || 0) * 13 + (node.lane || 0) * 7) % 5;
   return (seed - 2) * 8;
-}
-
-function getMapNodeGlyph(type) {
-  return MAP_NODE_GLYPHS[type] || "?";
 }
 
 function getMapNodeShortLabel(type) {

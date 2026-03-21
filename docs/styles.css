@@ -153,6 +153,7 @@ h3 {
   padding: 10px 12px;
   background: rgba(11, 18, 17, 0.52);
   border: 1px solid rgba(184, 155, 96, 0.22);
+  min-height: 64px;
 }
 
 .status-row {
@@ -162,6 +163,7 @@ h3 {
 
 .combat-hud {
   margin-bottom: 16px;
+  min-height: 72px;
 }
 
 .combat-rail {
@@ -214,6 +216,7 @@ h3 {
 
 .combat-banner {
   margin-top: 8px;
+  min-height: 38px;
   padding: 9px 12px;
   border-radius: 12px;
   color: var(--text);
@@ -834,13 +837,15 @@ button:disabled {
 }
 
 .scale-fx {
-  display: inline-flex;
-  margin-top: 6px;
+  position: absolute;
+  top: 10px;
+  right: 10px;
   padding: 3px 7px;
   border-radius: 999px;
   color: var(--text);
   background: rgba(17, 28, 25, 0.8);
   animation: lane-float 0.9s ease forwards;
+  pointer-events: none;
 }
 
 .scale-fx.player {
@@ -1096,6 +1101,7 @@ button:disabled {
 
   .combat-hud {
     margin-bottom: 12px;
+    min-height: 82px;
   }
 
   .combat-rail {
@@ -1126,6 +1132,7 @@ button:disabled {
     min-width: 0;
     padding: 7px 9px;
     border-radius: 14px;
+    min-height: 58px;
   }
 
   .status-label {
@@ -1236,5 +1243,112 @@ button:disabled {
 
   .banner-row {
     margin-bottom: 12px;
+  }
+}
+
+@media (max-width: 720px) and (orientation: portrait) {
+  .app-shell {
+    width: 100%;
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 8px calc(24px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .layout {
+    gap: 10px;
+  }
+
+  .primary-panel.panel,
+  .side-panel.panel {
+    padding: 10px;
+  }
+
+  .section-head-large {
+    position: static;
+    margin: 0 0 10px;
+    padding: 0;
+    background: none;
+  }
+
+  .combat-hud {
+    min-height: 88px;
+  }
+
+  .board-section + .board-section,
+  .info-block + .info-block {
+    margin-top: 10px;
+  }
+
+  .board-scroll {
+    margin: 0 -2px;
+    padding: 0 2px 6px;
+  }
+
+  .lane-grid {
+    grid-template-columns: repeat(4, minmax(84px, 1fr));
+    min-width: 354px;
+    gap: 6px;
+  }
+
+  .slot-card,
+  .hand-card {
+    min-height: 88px;
+    padding: 7px;
+  }
+
+  .hand-panel {
+    position: static;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    z-index: auto;
+    display: block;
+    min-height: 0;
+    max-height: none;
+    margin-top: 12px;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  .hand-strip {
+    grid-auto-columns: minmax(104px, 118px);
+    min-height: 0;
+    margin-top: 8px;
+    padding-bottom: 4px;
+  }
+
+  .battle-tray-actions {
+    margin-top: 8px;
+  }
+
+  .battle-tray-actions .primary-button {
+    width: 100%;
+  }
+
+  .tray-items {
+    margin-top: 8px;
+    padding-top: 8px;
+    min-height: 0;
+  }
+
+  .tray-items .item-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 2px;
+  }
+
+  .side-panel-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    padding-top: 2px;
+    background: linear-gradient(180deg, rgba(15, 24, 22, 0.98), rgba(15, 24, 22, 0.86));
+  }
+
+  .deck-panel,
+  .log-panel {
+    max-height: 160px;
   }
 }

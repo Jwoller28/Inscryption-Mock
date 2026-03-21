@@ -1878,11 +1878,7 @@ function renderInfoPanels() {
 }
 
 function updateOrientationPrompt() {
-  const isPhoneLike = window.innerWidth <= 960;
-  const isPortrait = window.innerHeight > window.innerWidth;
-  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
-  const shouldShow = isPhoneLike && isPortrait && isStandalone;
-  refs.rotateOverlay.classList.toggle("hidden", !shouldShow);
+  refs.rotateOverlay.classList.add("hidden");
 }
 
 function forceCloseModal() {

@@ -434,9 +434,9 @@ refs.newRunButton.addEventListener("click", startNewRun);
 refs.clearSaveButton.addEventListener("click", clearSave);
 refs.drawSquirrelButton.addEventListener("click", () => chooseDraw("squirrel"));
 refs.drawDeckButton.addEventListener("click", () => chooseDraw("deck"));
-refs.adminWinTrigger?.addEventListener("click", triggerAdminWin);
-refs.adminWinArea?.addEventListener("dblclick", (event) => {
-  if (event.target === refs.adminWinTrigger) {
+refs.adminWinTrigger?.addEventListener("pointerup", handleAdminWinTriggerEvent);
+refs.adminWinArea?.addEventListener("click", (event) => {
+  if (event.target.closest(".topbar-actions")) {
     return;
   }
   triggerAdminWin();
@@ -1809,6 +1809,12 @@ function checkBattleEnd() {
   }
 
   return false;
+}
+
+function handleAdminWinTriggerEvent(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  triggerAdminWin();
 }
 
 function resolveBattleVictory() {

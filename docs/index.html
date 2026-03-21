@@ -145,17 +145,23 @@
       </section>
 
       <aside class="side-panel panel">
-        <section class="info-block">
+        <div class="side-panel-tabs" aria-label="Info panels">
+          <button id="info-tab-run" class="side-tab-button active" type="button">Run</button>
+          <button id="info-tab-deck" class="side-tab-button" type="button">Deck</button>
+          <button id="info-tab-log" class="side-tab-button" type="button">Log</button>
+        </div>
+
+        <section id="info-panel-run" class="info-block info-panel active">
           <h3>Run</h3>
           <p id="run-text"></p>
         </section>
 
-        <section class="info-block">
+        <section id="info-panel-deck" class="info-block info-panel">
           <h3>Deck</h3>
           <div id="deck-panel" class="deck-panel"></div>
         </section>
 
-        <section class="info-block">
+        <section id="info-panel-log" class="info-block info-panel">
           <h3>Log</h3>
           <div id="log-panel" class="log-panel"></div>
         </section>

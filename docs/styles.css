@@ -124,6 +124,27 @@ h3 {
   padding: 16px;
 }
 
+.side-panel-tabs {
+  display: none;
+}
+
+.side-tab-button {
+  flex: 1 1 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  color: var(--muted);
+  background: rgba(13, 22, 20, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(184, 138, 82, 0.18);
+  font: 700 0.85rem/1 "Trebuchet MS", sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.side-tab-button.active {
+  color: var(--text);
+  background: linear-gradient(180deg, rgba(216, 163, 79, 0.92), rgba(131, 86, 30, 0.92));
+}
+
 .banner-card,
 .status-card {
   min-width: 120px;
@@ -178,6 +199,10 @@ h3 {
 .board-section + .board-section,
 .info-block + .info-block {
   margin-top: 16px;
+}
+
+.info-panel.active {
+  display: block;
 }
 
 .item-bar {
@@ -489,25 +514,52 @@ button:disabled {
   .side-panel {
     width: 100%;
   }
+
+  .panel {
+    padding: 14px;
+  }
+
+  .lane-grid {
+    gap: 8px;
+  }
+
+  .slot-card,
+  .hand-card {
+    min-height: 142px;
+  }
 }
 
 @media (max-width: 720px) {
   .app-shell {
-    padding: calc(10px + env(safe-area-inset-top, 0px)) 10px calc(120px + env(safe-area-inset-bottom, 0px));
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 8px calc(110px + env(safe-area-inset-bottom, 0px));
   }
 
   .topbar {
     flex-direction: column;
     align-items: stretch;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .topbar h1 {
+    font-size: clamp(1.45rem, 6vw, 2rem);
+  }
+
+  .eyebrow {
+    margin-bottom: 4px;
+    font-size: 0.68rem;
   }
 
   .topbar-actions {
     width: 100%;
     flex-wrap: wrap;
+    gap: 8px;
   }
 
   .topbar-actions button {
     flex: 1 1 0;
+    padding: 10px 12px;
+    font-size: 0.82rem;
   }
 
   .board-scroll {
@@ -516,53 +568,162 @@ button:disabled {
   }
 
   .lane-grid {
-    grid-template-columns: repeat(4, minmax(128px, 1fr));
-    min-width: 548px;
+    grid-template-columns: repeat(4, minmax(116px, 1fr));
+    min-width: 492px;
   }
 
   .slot-card,
   .hand-card {
-    min-height: 138px;
-    font-size: 0.88rem;
+    min-height: 124px;
+    padding: 10px;
+    font-size: 0.82rem;
+  }
+
+  .card-name {
+    margin-bottom: 4px;
+    font-size: 0.92rem;
+  }
+
+  .card-stats,
+  .card-sigils,
+  .card-meta {
+    font-size: 0.75rem;
+    line-height: 1.25;
+  }
+
+  .card-sigils,
+  .card-meta {
+    margin-top: 6px;
   }
 
   .hand-panel {
     position: fixed;
-    left: 10px;
-    right: 10px;
-    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    left: 8px;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
     z-index: 20;
     margin-top: 0;
+    padding: 10px;
     border-radius: 18px;
-    background: rgba(15, 24, 22, 0.98);
+    background: rgba(15, 24, 22, 0.96);
     box-shadow: 0 18px 36px rgba(0, 0, 0, 0.45);
   }
 
+  .hand-panel .section-head span {
+    display: none;
+  }
+
   .hand-strip {
-    grid-auto-columns: minmax(136px, 150px);
+    grid-auto-columns: minmax(122px, 138px);
     padding-bottom: 2px;
+    margin-top: 8px;
   }
 
   .section-head-large {
     position: sticky;
     top: 0;
     z-index: 5;
-    padding-bottom: 10px;
+    margin: -16px -16px 12px;
+    padding: 10px 16px 8px;
     background: linear-gradient(180deg, rgba(35, 22, 16, 0.98), rgba(35, 22, 16, 0.78));
   }
 
+  .section-copy,
+  .section-head span,
+  .info-block p,
+  .choice-copy,
+  .card-meta {
+    font-size: 0.8rem;
+  }
+
   .status-row {
-    gap: 8px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 12px;
   }
 
   .banner-row {
-    gap: 8px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 10px;
   }
 
   .banner-card,
   .status-card {
     min-width: 0;
-    padding: 8px 10px;
+    padding: 7px 9px;
+    border-radius: 14px;
+  }
+
+  .status-label {
+    margin-bottom: 2px;
+    font-size: 0.68rem;
+  }
+
+  .primary-panel.panel,
+  .side-panel.panel {
+    border-radius: 18px;
+    padding: 12px;
+  }
+
+  .board-section + .board-section,
+  .info-block + .info-block {
+    margin-top: 12px;
+  }
+
+  .section-head {
+    gap: 8px;
+  }
+
+  .section-head h3 {
+    font-size: 0.94rem;
+  }
+
+  .item-bar {
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .item-button,
+  .primary-button,
+  .secondary-button,
+  .ghost-button {
+    min-width: 0;
+  }
+
+  .item-button {
+    min-width: 118px;
+    padding: 10px;
+    font-size: 0.8rem;
+  }
+
+  .side-panel {
+    margin-top: 10px;
+  }
+
+  .side-panel-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .info-panel {
+    display: none;
+  }
+
+  .info-panel.active {
+    display: block;
+  }
+
+  .deck-panel,
+  .log-panel {
+    max-height: 180px;
+  }
+
+  .log-panel {
+    min-height: 120px;
   }
 
   .choice-card {

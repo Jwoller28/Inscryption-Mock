@@ -44,6 +44,7 @@ const ITEM_DEFS = {
 };
 const MODAL_MODES = new Set(["reward", "map", "campfire", "backpack", "sigil", "woodcarver", "mycologists", "economy", "gameover", "complete"]);
 const VALID_MODES = new Set(["battle", ...MODAL_MODES]);
+const INFO_PANELS = ["run", "deck", "log"];
 
 const SIGIL_STONE_POOL = [
   "Airborne",
@@ -123,6 +124,9 @@ const CARD_LIBRARY = {
 };
 
 const state = createInitialState();
+const uiState = {
+  mobileInfoPanel: "run"
+};
 const refs = {
   screenText: document.getElementById("screen-text"),
   rotateOverlay: document.getElementById("rotate-overlay"),
@@ -154,6 +158,12 @@ const refs = {
   itemBar: document.getElementById("item-bar"),
   logPanel: document.getElementById("log-panel"),
   deckPanel: document.getElementById("deck-panel"),
+  infoTabRun: document.getElementById("info-tab-run"),
+  infoTabDeck: document.getElementById("info-tab-deck"),
+  infoTabLog: document.getElementById("info-tab-log"),
+  infoPanelRun: document.getElementById("info-panel-run"),
+  infoPanelDeck: document.getElementById("info-panel-deck"),
+  infoPanelLog: document.getElementById("info-panel-log"),
   drawSquirrelButton: document.getElementById("draw-squirrel-button"),
   drawDeckButton: document.getElementById("draw-deck-button"),
   endTurnButton: document.getElementById("end-turn-button"),
@@ -168,6 +178,9 @@ refs.drawSquirrelButton.addEventListener("click", () => chooseDraw("squirrel"));
 refs.drawDeckButton.addEventListener("click", () => chooseDraw("deck"));
 refs.closeChoiceButton.addEventListener("click", forceCloseModal);
 refs.choiceBackdrop.addEventListener("click", forceCloseModal);
+refs.infoTabRun.addEventListener("click", () => setMobileInfoPanel("run"));
+refs.infoTabDeck.addEventListener("click", () => setMobileInfoPanel("deck"));
+refs.infoTabLog.addEventListener("click", () => setMobileInfoPanel("log"));
 window.addEventListener("resize", updateOrientationPrompt);
 window.addEventListener("orientationchange", updateOrientationPrompt);
 
@@ -1684,7 +1697,31 @@ function render() {
   renderRunInfo();
   renderDeck();
   renderLog();
+  renderInfoPanels();
   refs.endTurnButton.disabled = state.mode !== "battle";
+}
+
+function setMobileInfoPanel(panel) {
+  if (!INFO_PANELS.includes(panel)) {
+    return;
+  }
+  uiState.mobileInfoPanel = panel;
+  renderInfoPanels();
+}
+
+function renderInfoPanels() {
+  const panelMap = {
+    run: { tab: refs.infoTabRun, panel: refs.infoPanelRun },
+    deck: { tab: refs.infoTabDeck, panel: refs.infoPanelDeck },
+    log: { tab: refs.infoTabLog, panel: refs.infoPanelLog }
+  };
+
+  INFO_PANELS.forEach((name) => {
+    const active = uiState.mobileInfoPanel === name;
+    panelMap[name].tab.classList.toggle("active", active);
+    panelMap[name].tab.setAttribute("aria-pressed", String(active));
+    panelMap[name].panel.classList.toggle("active", active);
+  });
 }
 
 function updateOrientationPrompt() {

@@ -63,6 +63,10 @@
               <strong id="selection-text">None</strong>
             </div>
             <div class="status-card">
+              <span class="status-label">Hint</span>
+              <strong id="selection-hint-text">Pick a card</strong>
+            </div>
+            <div class="status-card">
               <span class="status-label">Items</span>
               <strong id="item-count-text">0</strong>
             </div>
@@ -81,7 +85,9 @@
               <h3>Enemy Queue</h3>
               <span id="queue-caption">Incoming cards</span>
             </div>
-            <div id="enemy-queue" class="lane-grid"></div>
+            <div class="board-scroll">
+              <div id="enemy-queue" class="lane-grid"></div>
+            </div>
           </section>
 
           <section class="board-section">
@@ -89,7 +95,9 @@
               <h3>Enemy Board</h3>
               <span>Top row</span>
             </div>
-            <div id="enemy-board" class="lane-grid"></div>
+            <div class="board-scroll">
+              <div id="enemy-board" class="lane-grid"></div>
+            </div>
           </section>
 
           <section class="board-section">
@@ -97,7 +105,9 @@
               <h3>Your Board</h3>
               <span>Tap a card, then tap a lane</span>
             </div>
-            <div id="player-board" class="lane-grid"></div>
+            <div class="board-scroll">
+              <div id="player-board" class="lane-grid"></div>
+            </div>
           </section>
 
           <section class="hand-panel">

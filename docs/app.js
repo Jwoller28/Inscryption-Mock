@@ -56,6 +56,7 @@ const refs = {
   scaleText: document.getElementById("scale-text"),
   bonesText: document.getElementById("bones-text"),
   selectionText: document.getElementById("selection-text"),
+  selectionHintText: document.getElementById("selection-hint-text"),
   itemCountText: document.getElementById("item-count-text"),
   runText: document.getElementById("run-text"),
   queueCaption: document.getElementById("queue-caption"),
@@ -365,7 +366,8 @@ function getEncounterDeck(node) {
       createCard("Stoat", 1, 3, 1, "blood", []),
       createCard("Elk", 1, 4, 1, "blood", []),
       createCard("Mole", 0, 4, 2, "blood", ["Burrower"]),
-      createCard("Skeleton", 1, 1, 1, "bones", [])
+      createCard("Skeleton", 1, 1, 1, "bones", []),
+      createCard("Skunk", 0, 3, 1, "blood", ["Stinky"])
     ];
   }
 
@@ -376,7 +378,8 @@ function getEncounterDeck(node) {
       createCard("Bloodhound", 2, 3, 2, "blood", ["Guardian"]),
       createCard("Coyote", 2, 1, 4, "bones", []),
       createCard("Alpha", 1, 2, 2, "blood", ["Leader"]),
-      createCard("Mole", 0, 4, 2, "blood", ["Burrower"])
+      createCard("Mole", 0, 4, 2, "blood", ["Burrower"]),
+      createCard("Beehive", 0, 2, 1, "blood", ["Bees Within"])
     ];
   }
 
@@ -385,6 +388,7 @@ function getEncounterDeck(node) {
     createCard("Mantis God", 2, 1, 3, "blood", ["Double Strike"]),
     createCard("Wolf", 3, 2, 2, "blood", []),
     createCard("Raven", 2, 3, 2, "blood", ["Airborne"]),
+    createCard("Mantis", 1, 1, 1, "blood", ["Bifurcated Strike"]),
     createCard("Bone Heap", 1, 2, 2, "bones", ["Sharp Quills"]),
     createCard("Cockroach", 1, 1, 4, "bones", ["Unkillable"])
   ];
@@ -518,54 +522,136 @@ function resolveAttackLane(attackingRow, defendingRow, lane, isPlayer) {
   if (!attacker) {
     return;
   }
+  const attackLanes = getAttackLanes(attacker, lane);
   const strikes = attacker.sigils.includes("Double Strike") ? 2 : 1;
-  for (let hit = 0; hit < strikes; hit += 1) {
-    if (!attackingRow[lane]) {
-      break;
+  attackLanes.forEach((targetLane) => {
+    for (let hit = 0; hit < strikes; hit += 1) {
+      if (!attackingRow[lane]) {
+        break;
+      }
+      singleStrike(attackingRow, defendingRow, lane, targetLane, isPlayer);
     }
-    singleStrike(attackingRow[lane], defendingRow, lane, isPlayer);
-  }
+  });
 }
 
-function singleStrike(attacker, defendingRow, lane, isPlayer) {
-  const defender = defendingRow[lane];
+function getAttackLanes(attacker, lane) {
+  if (attacker.sigils.includes("Trifurcated Strike")) {
+    return [lane - 1, lane, lane + 1].filter((targetLane) => targetLane >= 0 && targetLane < 4);
+  }
+  if (attacker.sigils.includes("Bifurcated Strike")) {
+    return [lane - 1, lane + 1].filter((targetLane) => targetLane >= 0 && targetLane < 4);
+  }
+  return [lane];
+}
+
+function singleStrike(attackingRow, defendingRow, attackerLane, targetLane, isPlayer) {
+  const attacker = attackingRow[attackerLane];
+  if (!attacker) {
+    return;
+  }
+
   const airborne = attacker.sigils.includes("Airborne");
+  const defenderLane = resolveDefenderLane(defendingRow, targetLane, airborne);
+  const defender = defenderLane === null ? null : defendingRow[defenderLane];
   const blockedByLeap = defender && defender.sigils.includes("Mighty Leap");
+  const attackPower = getAttackPower(attacker, attackingRow, attackerLane, defendingRow, targetLane);
+
+  if (attackPower <= 0) {
+    appendLog(`${attacker.name} could not deal damage.`);
+    return;
+  }
 
   if (!defender || (airborne && !blockedByLeap)) {
     if (isPlayer) {
-      state.battle.playerDamage += attacker.attack;
-      appendLog(`${attacker.name} struck the scale for ${attacker.attack}.`);
+      state.battle.playerDamage += attackPower;
+      appendLog(`${attacker.name} struck the scale for ${attackPower}.`);
     } else {
-      state.battle.enemyDamage += attacker.attack;
-      appendLog(`${attacker.name} dealt ${attacker.attack} direct damage.`);
+      state.battle.enemyDamage += attackPower;
+      appendLog(`${attacker.name} dealt ${attackPower} direct damage.`);
     }
     return;
   }
 
-  dealCombatDamage(attacker, defendingRow, lane, isPlayer);
+  dealCombatDamage(attackingRow, defendingRow, attackerLane, defenderLane, attackPower, isPlayer);
 }
 
-function dealCombatDamage(attacker, defendingRow, lane, isPlayer) {
-  const defender = defendingRow[lane];
+function resolveDefenderLane(defendingRow, targetLane, airborne) {
+  const directDefender = defendingRow[targetLane];
+  if (directDefender) {
+    return targetLane;
+  }
+  if (airborne) {
+    return null;
+  }
+  const burrowerLane = findBurrowerLane(defendingRow, targetLane);
+  if (burrowerLane !== null && burrowerLane !== targetLane) {
+    defendingRow[targetLane] = defendingRow[burrowerLane];
+    defendingRow[burrowerLane] = null;
+    appendLog(`${defendingRow[targetLane].name} burrowed into lane ${targetLane + 1}.`);
+    return targetLane;
+  }
+  return burrowerLane;
+}
+
+function findBurrowerLane(defendingRow, targetLane) {
+  if (defendingRow[targetLane] && defendingRow[targetLane].sigils.includes("Burrower")) {
+    return targetLane;
+  }
+  for (let lane = 0; lane < defendingRow.length; lane += 1) {
+    const card = defendingRow[lane];
+    if (card && card.sigils.includes("Burrower")) {
+      return lane;
+    }
+  }
+  return null;
+}
+
+function getAttackPower(attacker, attackingRow, attackerLane, defendingRow, targetLane) {
+  let power = attacker.attack;
+
+  const leftAlly = attackingRow[attackerLane - 1];
+  const rightAlly = attackingRow[attackerLane + 1];
+  if (leftAlly && leftAlly.sigils.includes("Leader")) {
+    power += 1;
+  }
+  if (rightAlly && rightAlly.sigils.includes("Leader")) {
+    power += 1;
+  }
+
+  const opposingCard = defendingRow[targetLane];
+  if (opposingCard && opposingCard.sigils.includes("Stinky")) {
+    power -= 1;
+  }
+
+  return Math.max(power, 0);
+}
+
+function dealCombatDamage(attackingRow, defendingRow, attackerLane, defenderLane, attackPower, isPlayer) {
+  const attacker = attackingRow[attackerLane];
+  const defender = defendingRow[defenderLane];
   if (!defender) {
     return;
   }
 
   const lethal = attacker.sigils.includes("Touch of Death");
-  defender.health = lethal ? 0 : defender.health - attacker.attack;
-  appendLog(`${attacker.name} hit ${defender.name} for ${lethal ? "lethal" : attacker.attack}.`);
+  defender.health = lethal ? 0 : defender.health - attackPower;
+  appendLog(`${attacker.name} hit ${defender.name} for ${lethal ? "lethal" : attackPower}.`);
+
+  if (defender.sigils.includes("Bees Within") && !isPlayer) {
+    state.battle.hand.push(createCard("Bee", 1, 1, 0, "blood", ["Airborne"]));
+    appendLog(`${defender.name} released a Bee into your hand.`);
+  }
 
   if (defender.sigils.includes("Sharp Quills")) {
     attacker.health -= 1;
     appendLog(`${defender.name} reflected 1 damage.`);
     if (attacker.health <= 0) {
-      removeDeadCard(isPlayer ? state.battle.playerSlots : state.battle.enemySlots, lane, isPlayer);
+      removeDeadCard(attackingRow, attackerLane, isPlayer);
     }
   }
 
   if (defender.health <= 0) {
-    removeDeadCard(defendingRow, lane, !isPlayer);
+    removeDeadCard(defendingRow, defenderLane, !isPlayer);
   }
 }
 
@@ -627,6 +713,7 @@ function advanceEnemyBoard() {
     if (!state.battle.enemySlots[lane] && state.battle.enemyQueue[lane]) {
       state.battle.enemySlots[lane] = state.battle.enemyQueue[lane];
       state.battle.enemyQueue[lane] = null;
+      handleGuardianResponse(state.battle.playerSlots, lane);
     }
   }
   fillEnemyQueue();
@@ -784,7 +871,25 @@ function placeSelectedCard(index) {
   state.battle.hand.splice(selectedIndex, 1);
   state.selection = createSelectionState();
   appendLog(`Played ${selectedCard.name}.`);
+  handleGuardianResponse(state.battle.enemySlots, index);
   render();
+}
+
+function handleGuardianResponse(guardRow, targetLane) {
+  if (guardRow[targetLane]) {
+    return;
+  }
+
+  for (let lane = 0; lane < guardRow.length; lane += 1) {
+    const card = guardRow[lane];
+    if (!card || !card.sigils.includes("Guardian")) {
+      continue;
+    }
+    guardRow[targetLane] = card;
+    guardRow[lane] = null;
+    appendLog(`${card.name} guarded lane ${targetLane + 1}.`);
+    return;
+  }
 }
 
 function canPlaceOnSlot(index) {
@@ -923,6 +1028,7 @@ function renderBattle() {
   refs.scaleText.textContent = `${state.battle.playerDamage} | ${state.battle.enemyDamage}`;
   refs.bonesText.textContent = String(state.battle.playerBones);
   refs.selectionText.textContent = getSelectedHandCard() ? getSelectedHandCard().name : "None";
+  refs.selectionHintText.textContent = getSelectionHint();
   refs.itemCountText.textContent = String(state.items.length);
   refs.queueCaption.textContent = state.battle.enemyDeck.length > 0 ? `${state.battle.enemyDeck.length} cards left in enemy deck` : "Enemy deck empty";
 
@@ -931,6 +1037,26 @@ function renderBattle() {
   renderLane(refs.playerBoard, state.battle.playerSlots, "player", onPlayerSlotClick);
   renderHand();
   renderItems();
+}
+
+function getSelectionHint() {
+  const selectedCard = getSelectedHandCard();
+  if (!selectedCard) {
+    return "Pick a card";
+  }
+
+  if (selectedCard.costType === "bones") {
+    const needed = Math.max(selectedCard.cost - state.battle.playerBones, 0);
+    return needed > 0 ? `${needed} more bones needed` : "Tap an empty lane";
+  }
+
+  if (selectedCard.cost === 0) {
+    return "Tap an empty lane";
+  }
+
+  const selectedCount = state.selection.selectedSacrificeIndexes.length;
+  const needed = Math.max(selectedCard.cost - selectedCount, 0);
+  return needed > 0 ? `${needed} sacrifice${needed > 1 ? "s" : ""} left` : "Tap an empty lane";
 }
 
 function renderLane(container, slots, side, onClick) {

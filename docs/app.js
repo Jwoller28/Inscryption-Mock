@@ -129,7 +129,9 @@ const refs = {
   screenTitle: document.getElementById("screen-title"),
   screenSubtitle: document.getElementById("screen-subtitle"),
   battleView: document.getElementById("battle-view"),
+  choiceModal: document.getElementById("choice-modal"),
   choiceView: document.getElementById("choice-view"),
+  choiceTitle: document.getElementById("choice-title"),
   choiceSummary: document.getElementById("choice-summary"),
   choiceActions: document.getElementById("choice-actions"),
   scaleText: document.getElementById("scale-text"),
@@ -1551,7 +1553,6 @@ function getScreenSubtitle(node) {
 function renderBattle() {
   const visible = state.mode === "battle";
   refs.battleView.classList.toggle("hidden", !visible);
-  refs.choiceView.classList.toggle("hidden", visible);
   if (!visible) {
     return;
   }
@@ -1651,7 +1652,12 @@ function renderItems() {
 }
 
 function renderChoiceScreen() {
-  if (state.mode === "battle") {
+  const modalVisible = state.mode !== "battle";
+  refs.choiceModal.classList.toggle("hidden", !modalVisible);
+  refs.choiceView.classList.toggle("hidden", !modalVisible);
+  refs.choiceTitle.textContent = state.currentScreen || "Choice";
+
+  if (!modalVisible) {
     return;
   }
 

@@ -2,11 +2,24 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#1c2b28">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Inscryption Mock">
   <title>Inscryption Mock Web</title>
+  <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
+  <div id="rotate-overlay" class="rotate-overlay">
+    <div class="rotate-card">
+      <p class="eyebrow">Landscape Recommended</p>
+      <h2>Rotate Your Phone</h2>
+      <p>Install this to your home screen and play in horizontal mode for the intended layout.</p>
+    </div>
+  </div>
+
   <div class="app-shell">
     <header class="topbar">
       <div>
@@ -129,11 +142,6 @@
             <div id="hand-strip" class="hand-strip"></div>
           </section>
         </section>
-
-        <section id="choice-view" class="hidden">
-          <div id="choice-summary" class="choice-summary"></div>
-          <div id="choice-actions" class="choice-actions"></div>
-        </section>
       </section>
 
       <aside class="side-panel panel">
@@ -153,6 +161,20 @@
         </section>
       </aside>
     </main>
+  </div>
+
+  <div id="choice-modal" class="choice-modal hidden">
+    <div class="choice-modal-backdrop"></div>
+    <section id="choice-view" class="choice-dialog hidden">
+      <div class="choice-dialog-head">
+        <div>
+          <p class="eyebrow">Popup</p>
+          <h2 id="choice-title">Choice</h2>
+        </div>
+      </div>
+      <div id="choice-summary" class="choice-summary"></div>
+      <div id="choice-actions" class="choice-actions"></div>
+    </section>
   </div>
 
   <script src="./app.js"></script>

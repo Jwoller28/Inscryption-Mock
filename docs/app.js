@@ -2,6 +2,14 @@ const SAVE_VERSION = 4;
 const SAVE_KEY = "inscryption-mock-web-save-v4";
 const LEGACY_SAVE_KEYS = ["inscryption-mock-web-save-v3"];
 const REGIONS = ["Woodlands", "Wetlands", "Snowline"];
+const MAP_LANE_COUNT = 4;
+const MAP_COLUMN_SPACING = 138;
+const MAP_LANE_SPACING = 112;
+const MAP_NODE_WIDTH = 104;
+const MAP_NODE_HEIGHT = 82;
+const MAP_PADDING_X = 44;
+const MAP_PADDING_Y = 54;
+const MAP_REGION_GAP = 1;
 const NODE_META = {
   BATTLE: { label: "Battle", summary: "Fight for a reward card." },
   EPIC_BATTLE: { label: "Epic Battle", summary: "Take on a harder optional fight for a premium reward." },
@@ -83,8 +91,8 @@ const STARTER_UNLOCKS = {
   supply: { label: "Supply Rat", bonusCard: () => createCard("Pack Rat", 2, 2, 2, "blood", ["Trinket Bearer"]) },
   ritual: { label: "Sacrificial Rite", bonusCard: () => createCard("Black Goat", 0, 1, 1, "blood", ["Worthy Sacrifice"]) }
 };
-const MODAL_MODES = new Set(["reward", "map", "campfire", "backpack", "sigil", "woodcarver", "mycologists", "economy", "gameover", "complete"]);
-const VALID_MODES = new Set(["battle", ...MODAL_MODES]);
+const MODAL_MODES = new Set(["reward", "campfire", "backpack", "sigil", "woodcarver", "mycologists", "economy", "gameover", "complete"]);
+const VALID_MODES = new Set(["battle", "map", ...MODAL_MODES]);
 const INFO_PANELS = ["run", "deck", "log"];
 
 const SIGIL_STONE_POOL = [
@@ -387,6 +395,14 @@ const refs = {
   battleTip: document.getElementById("battle-tip"),
   battleBanner: document.getElementById("battle-banner"),
   tutorialPanel: document.getElementById("tutorial-panel"),
+  mapView: document.getElementById("map-view"),
+  mapSummary: document.getElementById("map-summary"),
+  mapLegend: document.getElementById("map-legend"),
+  mapScroll: document.getElementById("map-scroll"),
+  mapBoard: document.getElementById("map-board"),
+  mapLinks: document.getElementById("map-links"),
+  mapRegions: document.getElementById("map-regions"),
+  mapNodes: document.getElementById("map-nodes"),
   drawCaption: document.getElementById("draw-caption"),
   runText: document.getElementById("run-text"),
   queueCaption: document.getElementById("queue-caption"),
@@ -661,6 +677,7 @@ function normalizeStateAfterLoad() {
   state.battle.enemyQueue = normalizeEncounterRow(state.battle.enemyQueue);
   state.battle.playerSlots = normalizeEncounterRow(state.battle.playerSlots);
   state.items = state.items.map((item) => copyItem(ITEM_DEFS[item.id] || item));
+  normalizeMapLayout(state.map);
   applyMetaUnlockProgress();
   ensureValidUiState("load");
 }
@@ -677,82 +694,218 @@ function saveState() {
 
 function generateMap() {
   const allNodes = [];
+  const regionBosses = [];
+  const regionStarts = [];
   let nodeIndex = 0;
+  let globalColumn = 0;
 
-  REGIONS.forEach((region) => {
-    const nodeCount = 8 + Math.floor(Math.random() * 5);
-    const regionNodes = [];
+  REGIONS.forEach((region, regionIndex) => {
+    const normalColumns = 5 + Math.floor(Math.random() * 2);
+    const columns = [];
+    const startLane = regionIndex % 2 === 0 ? 1 : 2;
 
-    for (let i = 0; i < nodeCount; i += 1) {
-      const node = {
-        id: `${region.toLowerCase()}_${i}`,
-        type: selectNodeType(region, i, nodeCount),
-        region,
-        position: nodeIndex,
-        regionPosition: i,
-        nextChoices: [],
-        visited: false,
-        completed: false
-      };
-      regionNodes.push(node);
-      allNodes.push(node);
-      nodeIndex += 1;
+    columns.push({
+      regionColumn: 0,
+      lanes: [startLane],
+      fixedType: "BATTLE"
+    });
+
+    for (let column = 1; column < normalColumns; column += 1) {
+      const previousLanes = columns[column - 1].lanes;
+      columns.push({
+        regionColumn: column,
+        lanes: createBranchLanes(previousLanes, column, normalColumns)
+      });
     }
 
-    const epicNode = {
-      id: `${region.toLowerCase()}_epic`,
-      type: "EPIC_BATTLE",
-      region,
-      position: nodeIndex,
-      regionPosition: nodeCount,
-      nextChoices: [],
-      visited: false,
-      completed: false
-    };
-    regionNodes.push(epicNode);
-    allNodes.push(epicNode);
-    nodeIndex += 1;
+    const preBossLanes = columns[columns.length - 1].lanes;
+    const epicLane = pickAnchorLane(preBossLanes, regionIndex);
+    const bossLane = 1 + (regionIndex % 2);
 
-    const bossNode = {
-      id: `${region.toLowerCase()}_boss`,
-      type: "BOSS",
-      region,
-      position: nodeIndex,
-      regionPosition: nodeCount + 1,
-      nextChoices: [],
-      visited: false,
-      completed: false
-    };
-    regionNodes.push(bossNode);
-    allNodes.push(bossNode);
-    nodeIndex += 1;
+    columns.push({
+      regionColumn: columns.length,
+      lanes: [epicLane],
+      fixedType: "EPIC_BATTLE"
+    });
+    columns.push({
+      regionColumn: columns.length,
+      lanes: [bossLane],
+      fixedType: "BOSS"
+    });
 
-    for (let i = 0; i < regionNodes.length - 1; i += 1) {
-      if (regionNodes[i].type === "EPIC_BATTLE") {
-        regionNodes[i].nextChoices.push(regionNodes[i + 1].position);
-        continue;
-      }
-      if (regionNodes[i + 1]?.type === "EPIC_BATTLE" && regionNodes[i + 2]?.type === "BOSS") {
-        regionNodes[i].nextChoices.push(regionNodes[i + 1].position);
-        regionNodes[i].nextChoices.push(regionNodes[i + 2].position);
-        continue;
-      }
-      const choices = 2 + Math.floor(Math.random() * 2);
-      for (let j = 0; j < choices && i + 1 + j < regionNodes.length; j += 1) {
-        regionNodes[i].nextChoices.push(regionNodes[i + 1 + j].position);
+    columns.forEach((columnData) => {
+      const nodes = columnData.lanes.map((lane, laneIndex) => {
+        const type = columnData.fixedType || selectNodeType(region, columnData.regionColumn, normalColumns);
+        const node = {
+          id: `${region.toLowerCase()}_${nodeIndex}`,
+          type,
+          region,
+          regionIndex,
+          position: nodeIndex,
+          regionPosition: columnData.regionColumn,
+          column: globalColumn + columnData.regionColumn,
+          lane,
+          nextChoices: [],
+          visited: false,
+          completed: false
+        };
+        if (type === "BOSS") {
+          node.id = `${region.toLowerCase()}_boss`;
+        } else if (type === "EPIC_BATTLE") {
+          node.id = `${region.toLowerCase()}_epic`;
+        } else {
+          node.id = `${region.toLowerCase()}_${columnData.regionColumn}_${lane}_${laneIndex}`;
+        }
+        allNodes.push(node);
+        nodeIndex += 1;
+        return node;
+      });
+      columnData.nodes = nodes;
+    });
+
+    for (let column = 0; column < columns.length - 1; column += 1) {
+      const currentNodes = columns[column].nodes;
+      const nextNodes = columns[column + 1].nodes;
+      const skipBossNodes = columns[column + 2]?.fixedType === "BOSS" && nextNodes[0]?.type === "EPIC_BATTLE"
+        ? columns[column + 2].nodes
+        : null;
+
+      linkMapColumns(currentNodes, nextNodes);
+      if (skipBossNodes) {
+        linkMapColumns(currentNodes, skipBossNodes, 1);
       }
     }
+
+    regionStarts.push(columns[0].nodes[0]);
+    regionBosses.push(columns[columns.length - 1].nodes[0]);
+    globalColumn += columns.length + MAP_REGION_GAP;
   });
 
-  for (let regionIndex = 0; regionIndex < REGIONS.length - 1; regionIndex += 1) {
-    const currentBoss = allNodes.find((node) => node.id === `${REGIONS[regionIndex].toLowerCase()}_boss`);
-    const nextStart = allNodes.find((node) => node.id === `${REGIONS[regionIndex + 1].toLowerCase()}_0`);
-    if (currentBoss && nextStart && !currentBoss.nextChoices.includes(nextStart.position)) {
-      currentBoss.nextChoices.push(nextStart.position);
+  for (let regionIndex = 0; regionIndex < regionBosses.length - 1; regionIndex += 1) {
+    const boss = regionBosses[regionIndex];
+    const nextStart = regionStarts[regionIndex + 1];
+    if (boss && nextStart && !boss.nextChoices.includes(nextStart.position)) {
+      boss.nextChoices.push(nextStart.position);
     }
   }
 
+  normalizeMapLayout(allNodes);
   return allNodes;
+}
+
+function createBranchLanes(previousLanes, column, totalColumns) {
+  const targetCount = column >= totalColumns - 2 ? 2 : 2 + Math.floor(Math.random() * 2);
+  const lanes = new Set(previousLanes.map((lane) => clampLane(lane + Math.floor(Math.random() * 3) - 1)));
+  while (lanes.size < targetCount) {
+    const seed = previousLanes[Math.floor(Math.random() * previousLanes.length)] ?? Math.floor(MAP_LANE_COUNT / 2);
+    lanes.add(clampLane(seed + Math.floor(Math.random() * 5) - 2));
+  }
+  return [...lanes].sort((a, b) => a - b).slice(0, 3);
+}
+
+function pickAnchorLane(lanes, regionIndex = 0) {
+  const sorted = [...lanes].sort((a, b) => a - b);
+  const midpoint = sorted[Math.floor(sorted.length / 2)] ?? Math.floor(MAP_LANE_COUNT / 2);
+  return clampLane(midpoint + (regionIndex % 2 === 0 ? 0 : -1));
+}
+
+function clampLane(lane) {
+  return Math.max(0, Math.min(MAP_LANE_COUNT - 1, lane));
+}
+
+function linkMapColumns(sourceNodes, targetNodes, maxTargets = 2) {
+  if (!sourceNodes?.length || !targetNodes?.length) {
+    return;
+  }
+
+  sourceNodes.forEach((node) => {
+    const rankedTargets = [...targetNodes].sort((a, b) => {
+      const laneDelta = Math.abs(node.lane - a.lane) - Math.abs(node.lane - b.lane);
+      return laneDelta || a.position - b.position;
+    });
+    const desiredTargets = Math.min(maxTargets, rankedTargets.length, sourceNodes.length > 1 && targetNodes.length > 1 ? 2 : 1);
+    rankedTargets.slice(0, desiredTargets).forEach((target) => {
+      if (!node.nextChoices.includes(target.position)) {
+        node.nextChoices.push(target.position);
+      }
+    });
+  });
+
+  targetNodes.forEach((target) => {
+    const hasInbound = sourceNodes.some((node) => node.nextChoices.includes(target.position));
+    if (hasInbound) {
+      return;
+    }
+    const nearestSource = [...sourceNodes].sort((a, b) => {
+      const laneDelta = Math.abs(a.lane - target.lane) - Math.abs(b.lane - target.lane);
+      return laneDelta || a.position - b.position;
+    })[0];
+    if (nearestSource && !nearestSource.nextChoices.includes(target.position)) {
+      nearestSource.nextChoices.push(target.position);
+    }
+  });
+}
+
+function normalizeMapLayout(map) {
+  if (!Array.isArray(map) || !map.length) {
+    return;
+  }
+
+  const missingLayout = map.some((node) => !Number.isInteger(node.column) || !Number.isInteger(node.lane));
+  if (!missingLayout) {
+    map.forEach((node) => {
+      node.regionIndex = Number.isInteger(node.regionIndex) ? node.regionIndex : Math.max(REGIONS.indexOf(node.region), 0);
+      node.regionPosition = Number.isInteger(node.regionPosition) ? node.regionPosition : 0;
+    });
+    return;
+  }
+
+  let globalColumn = 0;
+  REGIONS.forEach((region, regionIndex) => {
+    const regionNodes = map
+      .filter((node) => node.region === region)
+      .sort((a, b) => (a.regionPosition ?? a.position) - (b.regionPosition ?? b.position) || a.position - b.position);
+    if (!regionNodes.length) {
+      return;
+    }
+
+    const groups = new Map();
+    regionNodes.forEach((node) => {
+      const key = Number.isInteger(node.regionPosition) ? node.regionPosition : 0;
+      if (!groups.has(key)) {
+        groups.set(key, []);
+      }
+      groups.get(key).push(node);
+    });
+
+    const orderedKeys = [...groups.keys()].sort((a, b) => a - b);
+    orderedKeys.forEach((regionColumn, index) => {
+      const group = groups.get(regionColumn) || [];
+      const baseLanes = getLegacyLanesForGroup(group.length, index);
+      group.forEach((node, groupIndex) => {
+        node.regionIndex = regionIndex;
+        node.regionPosition = regionColumn;
+        node.column = globalColumn + index;
+        node.lane = node.type === "BOSS"
+          ? 1 + (regionIndex % 2)
+          : node.type === "EPIC_BATTLE"
+            ? pickAnchorLane(baseLanes, regionIndex)
+            : baseLanes[groupIndex] ?? baseLanes[baseLanes.length - 1] ?? 1;
+      });
+    });
+
+    globalColumn += orderedKeys.length + MAP_REGION_GAP;
+  });
+}
+
+function getLegacyLanesForGroup(size, offset = 0) {
+  if (size <= 1) {
+    return [1 + (offset % 2)];
+  }
+  if (size === 2) {
+    return offset % 2 === 0 ? [1, 2] : [0, 2];
+  }
+  return [0, 1, 2];
 }
 
 function selectNodeType(region, regionPosition, nodeCount) {
@@ -1089,6 +1242,7 @@ function pickRewardCardForTier(rarity) {
 
 function showMapSelection() {
   const currentNode = getCurrentNode();
+  normalizeMapLayout(state.map);
   state.mode = "map";
   state.currentScreen = "Choose Your Path";
   state.eventState = {
@@ -1737,6 +1891,7 @@ function setBattleScreenState(node) {
 }
 
 function setMapScreenState(node) {
+  normalizeMapLayout(state.map);
   state.mode = "map";
   state.currentScreen = "Choose Your Path";
   state.eventState = {
@@ -1849,9 +2004,6 @@ function isValidModalState() {
   if (state.mode === "reward") {
     return state.rewardOptions.length > 0;
   }
-  if (state.mode === "map") {
-    return state.eventState?.type === "map" && Array.isArray(state.eventState.choices);
-  }
   if (state.mode === "campfire") {
     return state.eventState?.type === "campfire" && ["chooseCard", "buffChoice"].includes(state.eventState.step);
   }
@@ -1889,6 +2041,14 @@ function ensureValidUiState(source = "render") {
 
   if (state.mode === "battle") {
     state.eventState = null;
+    return;
+  }
+
+  if (state.mode === "map") {
+    if (state.eventState?.type !== "map" || !Array.isArray(state.eventState.choices)) {
+      setMapScreenState(getCurrentNode());
+      appendLog(`Recovered from a stuck map state during ${source}.`);
+    }
     return;
   }
 
@@ -2302,6 +2462,10 @@ function chooseReward(index) {
 }
 
 function chooseMapNode(index) {
+  const currentNode = getCurrentNode();
+  if (!currentNode?.nextChoices.includes(index)) {
+    return;
+  }
   moveToNode(index);
   enterNode(getCurrentNode());
 }
@@ -2479,6 +2643,7 @@ function render() {
   updateOrientationPrompt();
   renderMeta();
   renderBattle();
+  renderMapView();
   renderChoiceScreen();
   renderRunInfo();
   renderDeck();
@@ -2726,10 +2891,23 @@ function renderMeta() {
   const node = getCurrentNode();
   refs.screenText.textContent = state.currentScreen || "Battle";
   refs.regionText.textContent = node ? node.region : "Run";
-  refs.progressText.textContent = node ? `Node ${node.position + 1} / ${state.map.length}` : "No node";
+  refs.progressText.textContent = node ? getProgressDisplay(node) : "No node";
   refs.saveText.textContent = state.saveStatus;
   refs.screenTitle.textContent = state.currentScreen || "Battle";
   refs.screenSubtitle.textContent = getScreenSubtitle(node);
+}
+
+function getProgressDisplay(node) {
+  if (!node) {
+    return "No node";
+  }
+  if (node.type === "BOSS") {
+    return "Boss";
+  }
+  if (node.type === "EPIC_BATTLE") {
+    return "Epic";
+  }
+  return `Stop ${node.regionPosition + 1}`;
 }
 
 function getScreenSubtitle(node) {
@@ -2743,7 +2921,7 @@ function getScreenSubtitle(node) {
     return `Battle in ${node.region}.`;
   }
   if (state.mode === "reward") return "Take one card and strengthen the run.";
-  if (state.mode === "map") return "Choose your next stop.";
+  if (state.mode === "map") return "Follow a highlighted route. Reachable nodes are the only ones you can enter.";
   if (state.mode === "campfire") return "Choose one card to improve permanently.";
   if (state.mode === "backpack") return "Take one item into future battles.";
   if (state.mode === "sigil") return "Move one sigil from a donor card onto another card.";
@@ -2779,6 +2957,192 @@ function renderBattle() {
   renderLane(refs.playerBoard, state.battle.playerSlots, "player", onPlayerSlotClick);
   renderHand();
   renderItems();
+}
+
+function renderMapView() {
+  const visible = state.mode === "map";
+  refs.mapView.classList.toggle("hidden", !visible);
+  if (!visible) {
+    return;
+  }
+
+  normalizeMapLayout(state.map);
+  const currentNode = getCurrentNode();
+  const reachablePositions = new Set(currentNode?.nextChoices || []);
+  const maxColumn = state.map.reduce((max, node) => Math.max(max, node.column || 0), 0);
+  const boardWidth = MAP_PADDING_X * 2 + maxColumn * MAP_COLUMN_SPACING + MAP_NODE_WIDTH;
+  const boardHeight = MAP_PADDING_Y * 2 + (MAP_LANE_COUNT - 1) * MAP_LANE_SPACING + MAP_NODE_HEIGHT;
+
+  refs.mapBoard.style.width = `${boardWidth}px`;
+  refs.mapBoard.style.height = `${boardHeight}px`;
+  refs.mapLinks.setAttribute("viewBox", `0 0 ${boardWidth} ${boardHeight}`);
+  refs.mapLinks.setAttribute("width", String(boardWidth));
+  refs.mapLinks.setAttribute("height", String(boardHeight));
+  refs.mapLinks.innerHTML = "";
+  refs.mapRegions.innerHTML = "";
+  refs.mapNodes.innerHTML = "";
+
+  renderMapRegions(boardHeight);
+  renderMapConnections(currentNode, reachablePositions);
+  renderMapNodes(currentNode, reachablePositions);
+  renderMapSummary(currentNode, reachablePositions);
+  syncMapViewport(currentNode);
+}
+
+function renderMapSummary(currentNode, reachablePositions) {
+  if (!currentNode) {
+    refs.mapSummary.innerHTML = `<p class="choice-copy">No route remains.</p>`;
+    refs.mapLegend.innerHTML = "";
+    return;
+  }
+
+  const choices = [...reachablePositions].map(findNodeByIndex).filter(Boolean);
+  const currentLabel = getNodeDisplayName(currentNode.type);
+  refs.mapSummary.innerHTML = choices.length
+    ? `<strong>${escapeHtml(`${currentNode.region} ${currentLabel}`)}</strong><span class="choice-copy">Highlighted nodes are reachable next. Scroll ahead to compare routes before you commit.</span>`
+    : `<strong>${escapeHtml(`${currentNode.region} ${currentLabel}`)}</strong><span class="choice-copy">No further paths remain in this run.</span>`;
+
+  refs.mapLegend.innerHTML = [
+    `<span class="map-legend-chip current">Current</span>`,
+    `<span class="map-legend-chip reachable">Reachable</span>`,
+    `<span class="map-legend-chip completed">Cleared</span>`,
+    `<span class="map-legend-chip locked">Future</span>`
+  ].join("");
+
+  if (!choices.length) {
+    const button = document.createElement("button");
+    button.className = "primary-button map-reset-button";
+    button.type = "button";
+    button.textContent = "Start New Run";
+    button.addEventListener("click", startNewRun);
+    refs.mapSummary.appendChild(button);
+  }
+}
+
+function renderMapRegions(boardHeight) {
+  REGIONS.forEach((region) => {
+    const regionNodes = state.map.filter((node) => node.region === region);
+    if (!regionNodes.length) {
+      return;
+    }
+    const minColumn = Math.min(...regionNodes.map((node) => node.column));
+    const maxColumn = Math.max(...regionNodes.map((node) => node.column));
+    const marker = document.createElement("div");
+    marker.className = "map-region-marker";
+    marker.style.left = `${MAP_PADDING_X + minColumn * MAP_COLUMN_SPACING - 18}px`;
+    marker.style.width = `${(maxColumn - minColumn + 1) * MAP_COLUMN_SPACING + 36}px`;
+    marker.innerHTML = `<span class="map-region-label">${escapeHtml(region)}</span>`;
+    refs.mapRegions.appendChild(marker);
+
+    if (region !== REGIONS[REGIONS.length - 1]) {
+      const divider = document.createElement("div");
+      divider.className = "map-region-divider";
+      divider.style.left = `${MAP_PADDING_X + (maxColumn + 0.5) * MAP_COLUMN_SPACING}px`;
+      divider.style.height = `${boardHeight - 30}px`;
+      refs.mapRegions.appendChild(divider);
+    }
+  });
+}
+
+function renderMapConnections(currentNode, reachablePositions) {
+  state.map.forEach((node) => {
+    node.nextChoices.forEach((nextPosition) => {
+      const target = findNodeByIndex(nextPosition);
+      if (!target) {
+        return;
+      }
+      const start = getMapNodePoint(node, "end");
+      const end = getMapNodePoint(target, "start");
+      const dx = Math.max((end.x - start.x) * 0.45, 22);
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", `M ${start.x} ${start.y} C ${start.x + dx} ${start.y}, ${end.x - dx} ${end.y}, ${end.x} ${end.y}`);
+      path.setAttribute("class", getMapLinkClass(node, target, currentNode, reachablePositions));
+      refs.mapLinks.appendChild(path);
+    });
+  });
+}
+
+function getMapLinkClass(node, target, currentNode, reachablePositions) {
+  const classes = ["map-link"];
+  if (node.completed && target.visited) {
+    classes.push("traveled");
+  } else if (currentNode && node.position === currentNode.position && reachablePositions.has(target.position)) {
+    classes.push("reachable");
+  } else if (target.completed || node.completed) {
+    classes.push("faded");
+  }
+  return classes.join(" ");
+}
+
+function renderMapNodes(currentNode, reachablePositions) {
+  state.map.forEach((node) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = getMapNodeClasses(node, currentNode, reachablePositions);
+    const point = getMapNodePoint(node);
+    button.style.left = `${point.x - MAP_NODE_WIDTH / 2}px`;
+    button.style.top = `${point.y - MAP_NODE_HEIGHT / 2}px`;
+    const reachable = reachablePositions.has(node.position);
+    button.tabIndex = reachable ? 0 : -1;
+    button.setAttribute("aria-disabled", String(!reachable));
+    button.innerHTML = [
+      `<span class="map-node-type">${escapeHtml(getNodeDisplayName(node.type))}</span>`,
+      `<strong class="map-node-region">${escapeHtml(node.region)}</strong>`,
+      `<span class="map-node-copy">${escapeHtml(getNodeSummary(node.type, node.region))}</span>`
+    ].join("");
+    button.setAttribute("aria-label", `${getNodeDisplayName(node.type)} in ${node.region}`);
+    if (reachable) {
+      button.addEventListener("click", () => chooseMapNode(node.position));
+    }
+    refs.mapNodes.appendChild(button);
+  });
+}
+
+function getMapNodeClasses(node, currentNode, reachablePositions) {
+  const classes = ["map-node"];
+  classes.push(`type-${node.type.toLowerCase()}`);
+  if (node.completed) {
+    classes.push("completed");
+  } else if (node.visited) {
+    classes.push("visited");
+  }
+  if (currentNode && node.position === currentNode.position) {
+    classes.push("current");
+  } else if (reachablePositions.has(node.position)) {
+    classes.push("reachable");
+  } else if (node.completed || node.visited) {
+    classes.push("past");
+  } else {
+    classes.push("locked");
+  }
+  return classes.join(" ");
+}
+
+function getMapNodePoint(node, edge = "center") {
+  const centerX = MAP_PADDING_X + (node.column || 0) * MAP_COLUMN_SPACING + MAP_NODE_WIDTH / 2;
+  const centerY = MAP_PADDING_Y + (node.lane || 0) * MAP_LANE_SPACING + MAP_NODE_HEIGHT / 2;
+  if (edge === "start") {
+    return { x: centerX - MAP_NODE_WIDTH / 2 + 8, y: centerY };
+  }
+  if (edge === "end") {
+    return { x: centerX + MAP_NODE_WIDTH / 2 - 8, y: centerY };
+  }
+  return { x: centerX, y: centerY };
+}
+
+function syncMapViewport(currentNode) {
+  if (!currentNode || !refs.mapScroll) {
+    return;
+  }
+  const focusKey = `${state.currentNodeIndex}:${state.mode}`;
+  if (uiState.mapFocusKey === focusKey) {
+    return;
+  }
+  uiState.mapFocusKey = focusKey;
+  window.requestAnimationFrame(() => {
+    const targetLeft = Math.max(0, MAP_PADDING_X + currentNode.column * MAP_COLUMN_SPACING - refs.mapScroll.clientWidth * 0.22);
+    refs.mapScroll.scrollTo({ left: targetLeft, behavior: "auto" });
+  });
 }
 
 function renderCombatHud() {
@@ -3322,21 +3686,6 @@ function renderChoiceScreen() {
     return;
   }
 
-  if (state.mode === "map") {
-    const currentNode = getCurrentNode();
-    const choices = state.eventState?.choices || [];
-    if (!choices.length) {
-      refs.choiceSummary.innerHTML = `<p class="choice-copy">No more paths remain in this run.</p>`;
-      refs.choiceActions.appendChild(createActionChoice("Start New Run", "Generate a fresh map and run.", startNewRun));
-      return;
-    }
-    refs.choiceSummary.innerHTML = `<p class="choice-copy">Current stop: ${escapeHtml(currentNode ? getNodeDisplayName(currentNode.type) : "Start")}.</p>`;
-    choices.forEach((node) => {
-      if (node) refs.choiceActions.appendChild(createNodeChoice(node, () => chooseMapNode(node.position)));
-    });
-    return;
-  }
-
   if (state.mode === "campfire") {
     renderCampfireChoices();
     return;
@@ -3517,14 +3866,6 @@ function renderTraderChoices() {
     bindSigilButtons(button, offer.card);
     refs.choiceActions.appendChild(button);
   });
-}
-
-function createNodeChoice(node, onClick) {
-  const button = document.createElement("button");
-  button.className = "choice-card node-choice";
-  button.innerHTML = `<strong>${escapeHtml(getNodeDisplayName(node.type))}</strong><span class="choice-copy">${escapeHtml(node.region)} | Node ${node.position + 1}</span><span class="choice-copy">${escapeHtml(getNodeSummary(node.type, node.region))}</span>`;
-  button.addEventListener("click", onClick);
-  return button;
 }
 
 function createActionChoice(title, subtitle, onClick) {

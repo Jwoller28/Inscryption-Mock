@@ -297,6 +297,275 @@ h3 {
   gap: 12px;
 }
 
+.map-view {
+  display: grid;
+  gap: 12px;
+}
+
+.map-head,
+.map-legend,
+.map-summary {
+  display: flex;
+  gap: 10px;
+}
+
+.map-head,
+.map-summary {
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.map-head {
+  padding: 2px 2px 0;
+}
+
+.map-legend {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.map-legend-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 6px 10px;
+  border-radius: var(--radius-pill);
+  color: var(--ink);
+  background: rgba(34, 28, 23, 0.92);
+  border: 1px solid rgba(239, 194, 122, 0.16);
+  font: 700 0.68rem/1 "Franklin Gothic Medium", "Arial Narrow", "Trebuchet MS", sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.map-legend-chip.current {
+  background: rgba(104, 72, 34, 0.86);
+}
+
+.map-legend-chip.reachable {
+  background: rgba(73, 108, 73, 0.86);
+}
+
+.map-legend-chip.completed {
+  background: rgba(70, 69, 62, 0.86);
+}
+
+.map-legend-chip.locked {
+  background: rgba(35, 32, 28, 0.8);
+  color: var(--muted);
+}
+
+.map-summary {
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border: 1px solid rgba(239, 194, 122, 0.14);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(239, 194, 122, 0.08), transparent 32%),
+    linear-gradient(180deg, rgba(33, 27, 22, 0.96), rgba(16, 14, 12, 0.98));
+}
+
+.map-summary strong,
+.map-summary span {
+  display: block;
+}
+
+.map-summary strong {
+  margin-bottom: 4px;
+  font-size: 1rem;
+}
+
+.map-reset-button {
+  margin-left: auto;
+  align-self: center;
+}
+
+.map-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+}
+
+.map-board {
+  position: relative;
+  min-height: 480px;
+  border: 1px solid rgba(239, 194, 122, 0.14);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top center, rgba(239, 194, 122, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(28, 23, 19, 0.98), rgba(12, 10, 9, 0.98));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+
+.map-links,
+.map-regions,
+.map-nodes {
+  position: absolute;
+  inset: 0;
+}
+
+.map-links {
+  overflow: visible;
+}
+
+.map-link {
+  fill: none;
+  stroke: rgba(144, 126, 100, 0.34);
+  stroke-linecap: round;
+  stroke-width: 3;
+}
+
+.map-link.reachable {
+  stroke: rgba(129, 188, 139, 0.9);
+  stroke-width: 4;
+  filter: drop-shadow(0 0 8px rgba(129, 188, 139, 0.18));
+}
+
+.map-link.traveled {
+  stroke: rgba(239, 194, 122, 0.52);
+}
+
+.map-link.faded {
+  stroke: rgba(110, 101, 89, 0.22);
+}
+
+.map-region-marker,
+.map-region-divider {
+  position: absolute;
+  pointer-events: none;
+}
+
+.map-region-marker {
+  top: 10px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(239, 194, 122, 0.14);
+}
+
+.map-region-label {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: var(--radius-pill);
+  color: var(--muted-strong);
+  background: rgba(18, 15, 13, 0.86);
+  box-shadow: inset 0 0 0 1px rgba(239, 194, 122, 0.12);
+  font: 700 0.72rem/1 "Franklin Gothic Medium", "Arial Narrow", "Trebuchet MS", sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.map-region-divider {
+  top: 36px;
+  width: 1px;
+  background: linear-gradient(180deg, rgba(239, 194, 122, 0.32), rgba(239, 194, 122, 0));
+}
+
+.map-node {
+  position: absolute;
+  width: 104px;
+  min-height: 82px;
+  padding: 10px 10px 8px;
+  color: var(--ink);
+  border-radius: 18px;
+  border: 1px solid rgba(239, 194, 122, 0.14);
+  background:
+    radial-gradient(circle at top center, rgba(239, 194, 122, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(40, 34, 27, 0.98), rgba(19, 16, 14, 0.98));
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, filter 140ms ease;
+}
+
+.map-node.current {
+  border-color: rgba(239, 194, 122, 0.58);
+  box-shadow:
+    0 16px 28px rgba(0, 0, 0, 0.28),
+    0 0 0 3px rgba(239, 194, 122, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+
+.map-node.reachable {
+  border-color: rgba(129, 188, 139, 0.66);
+  background:
+    radial-gradient(circle at top center, rgba(129, 188, 139, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(38, 49, 38, 0.98), rgba(18, 20, 17, 0.98));
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.24),
+    0 0 0 2px rgba(129, 188, 139, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+
+.map-node.reachable:hover {
+  transform: translateY(-3px);
+  filter: brightness(1.04);
+}
+
+.map-node.completed,
+.map-node.visited {
+  border-color: rgba(239, 194, 122, 0.24);
+  background:
+    radial-gradient(circle at top center, rgba(239, 194, 122, 0.05), transparent 34%),
+    linear-gradient(180deg, rgba(47, 41, 34, 0.96), rgba(23, 21, 18, 0.98));
+}
+
+.map-node.locked {
+  cursor: default;
+  color: var(--muted);
+  border-color: rgba(144, 126, 100, 0.12);
+  background:
+    linear-gradient(180deg, rgba(29, 25, 22, 0.92), rgba(16, 14, 13, 0.96));
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.2),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.015);
+}
+
+.map-node.current,
+.map-node.completed,
+.map-node.visited {
+  cursor: default;
+}
+
+.map-node.type-boss {
+  border-color: rgba(183, 100, 82, 0.46);
+  background:
+    radial-gradient(circle at top center, rgba(183, 100, 82, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(56, 34, 30, 0.98), rgba(22, 16, 15, 0.98));
+}
+
+.map-node.type-epic_battle {
+  border-color: rgba(239, 194, 122, 0.46);
+  background:
+    radial-gradient(circle at top center, rgba(239, 194, 122, 0.2), transparent 34%),
+    linear-gradient(180deg, rgba(59, 43, 22, 0.98), rgba(21, 17, 12, 0.98));
+}
+
+.map-node-type,
+.map-node-copy {
+  display: block;
+}
+
+.map-node-type {
+  color: var(--muted);
+  font: 700 0.64rem/1.1 "Franklin Gothic Medium", "Arial Narrow", "Trebuchet MS", sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.map-node-region {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.88rem;
+  line-height: 1.05;
+}
+
+.map-node-copy {
+  margin-top: 6px;
+  color: inherit;
+  font: 0.65rem/1.28 "Franklin Gothic Medium", "Arial Narrow", "Trebuchet MS", sans-serif;
+}
+
 .status-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1431,6 +1700,29 @@ button:disabled {
     gap: 10px;
   }
 
+  .map-head,
+  .map-summary {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .map-legend {
+    justify-content: flex-start;
+  }
+
+  .map-board {
+    min-height: 432px;
+    border-radius: 22px;
+  }
+
+  .map-node-region {
+    font-size: 0.8rem;
+  }
+
+  .map-node-copy {
+    font-size: 0.6rem;
+  }
+
   .status-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
@@ -1636,6 +1928,11 @@ button:disabled {
     width: 100%;
   }
 
+  .map-reset-button {
+    width: 100%;
+    margin-left: 0;
+  }
+
   .sigil-dialog,
   .draw-dialog {
     width: min(460px, calc(100vw - 20px));
@@ -1668,6 +1965,10 @@ button:disabled {
 
   .layout {
     gap: 10px;
+  }
+
+  .map-board {
+    min-height: 404px;
   }
 
   .panel {

@@ -103,6 +103,7 @@ const refs = {
   selectionText: document.getElementById("selection-text"),
   selectionHintText: document.getElementById("selection-hint-text"),
   itemCountText: document.getElementById("item-count-text"),
+  drawCaption: document.getElementById("draw-caption"),
   runText: document.getElementById("run-text"),
   queueCaption: document.getElementById("queue-caption"),
   enemyQueue: document.getElementById("enemy-queue"),
@@ -112,6 +113,8 @@ const refs = {
   itemBar: document.getElementById("item-bar"),
   logPanel: document.getElementById("log-panel"),
   deckPanel: document.getElementById("deck-panel"),
+  drawSquirrelButton: document.getElementById("draw-squirrel-button"),
+  drawDeckButton: document.getElementById("draw-deck-button"),
   endTurnButton: document.getElementById("end-turn-button"),
   newRunButton: document.getElementById("new-run-button"),
   clearSaveButton: document.getElementById("clear-save-button")
@@ -120,6 +123,8 @@ const refs = {
 refs.endTurnButton.addEventListener("click", endTurn);
 refs.newRunButton.addEventListener("click", startNewRun);
 refs.clearSaveButton.addEventListener("click", clearSave);
+refs.drawSquirrelButton.addEventListener("click", () => chooseDraw("squirrel"));
+refs.drawDeckButton.addEventListener("click", () => chooseDraw("deck"));
 
 boot();
 
@@ -168,6 +173,7 @@ function createBattleState() {
     enemyQueue: [null, null, null, null],
     skipEnemyAttackPhase: false,
     playerAirborneTurns: 0,
+    awaitingDrawChoice: false,
     nodeType: "BATTLE",
     bossType: null,
     bossPhase: 1,
@@ -419,6 +425,7 @@ function startBattle(node) {
   drawPlayerCard();
   drawPlayerCard();
   fillEnemyQueue();
+  state.battle.awaitingDrawChoice = false;
 
   appendLog(`Entered ${node.type === "BOSS" ? "a boss battle" : "a battle"} in ${node.region}.`);
   render();
@@ -647,6 +654,11 @@ function endTurn() {
   if (state.mode !== "battle") {
     return;
   }
+  if (state.battle.awaitingDrawChoice) {
+    appendLog("Choose whether to draw from the deck or take a Squirrel first.");
+    render();
+    return;
+  }
 
   appendLog("Player attacks.");
   tickTurns(state.battle.playerSlots);
@@ -676,7 +688,7 @@ function endTurn() {
   }
 
   advanceEnemyBoard();
-  drawStartOfTurnCard();
+  state.battle.awaitingDrawChoice = true;
   state.battle.playerAirborneTurns = Math.max(0, state.battle.playerAirborneTurns - 1);
   state.selection = createSelectionState();
   render();
@@ -990,13 +1002,28 @@ function advanceEnemyBoard() {
 }
 
 function drawStartOfTurnCard() {
-  const hasSquirrel = state.battle.hand.some((card) => card.name === "Squirrel");
-  if (!hasSquirrel || Math.random() > 0.35) {
-    drawPlayerCard();
-  } else {
+  state.battle.awaitingDrawChoice = true;
+}
+
+function chooseDraw(kind) {
+  if (state.mode !== "battle" || !state.battle.awaitingDrawChoice) {
+    return;
+  }
+
+  if (kind === "squirrel") {
     state.battle.hand.push(createLibraryCard("squirrel"));
     appendLog("Drew a Squirrel.");
+  } else {
+    if (state.battle.playerDeck.length > 0) {
+      drawPlayerCard();
+    } else {
+      appendLog("Deck is empty. Drew a Squirrel instead.");
+      state.battle.hand.push(createLibraryCard("squirrel"));
+    }
   }
+
+  state.battle.awaitingDrawChoice = false;
+  render();
 }
 
 function drawPlayerCard() {
@@ -1065,6 +1092,11 @@ function selectHandCard(index) {
 }
 
 function onPlayerSlotClick(index) {
+  if (state.battle.awaitingDrawChoice) {
+    appendLog("Choose your draw first.");
+    return;
+  }
+
   const selectedCard = getSelectedHandCard();
   if (!selectedCard) {
     appendLog("Select a hand card first.");
@@ -1087,6 +1119,12 @@ function onPlayerSlotClick(index) {
 
   if (state.battle.playerSlots[index] && !state.selection.selectedSacrificeIndexes.includes(index)) {
     toggleSacrifice(index);
+    return;
+  }
+
+  if (state.battle.playerSlots[index] && state.selection.selectedSacrificeIndexes.includes(index) && getSelectedSacrificeValue() >= selectedCard.cost) {
+    consumeSacrifices();
+    placeSelectedCard(index);
     return;
   }
 
@@ -1484,6 +1522,9 @@ function renderBattle() {
   refs.selectionText.textContent = getSelectedHandCard() ? getSelectedHandCard().name : "None";
   refs.selectionHintText.textContent = getSelectionHint();
   refs.itemCountText.textContent = String(state.items.length);
+  refs.drawCaption.textContent = state.battle.awaitingDrawChoice ? "Choose one before playing" : "Waiting for end of turn";
+  refs.drawSquirrelButton.disabled = !state.battle.awaitingDrawChoice;
+  refs.drawDeckButton.disabled = !state.battle.awaitingDrawChoice;
   refs.queueCaption.textContent = state.battle.enemyDeck.length > 0 ? `${state.battle.enemyDeck.length} cards left in enemy deck` : "Enemy deck empty";
 
   renderLane(refs.enemyQueue, state.battle.enemyQueue, "enemy", null);
@@ -1495,6 +1536,9 @@ function renderBattle() {
 
 function getSelectionHint() {
   const selectedCard = getSelectedHandCard();
+  if (state.battle.awaitingDrawChoice) {
+    return "Choose Deck or Squirrel";
+  }
   if (!selectedCard) {
     return "Pick a card";
   }

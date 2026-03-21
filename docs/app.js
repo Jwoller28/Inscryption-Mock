@@ -4,6 +4,7 @@ const LEGACY_SAVE_KEYS = ["inscryption-mock-web-save-v3"];
 const REGIONS = ["Woodlands", "Wetlands", "Snowline"];
 const NODE_META = {
   BATTLE: { label: "Battle", summary: "Fight for a reward card." },
+  EPIC_BATTLE: { label: "Epic Battle", summary: "Take on a harder optional fight for a premium reward." },
   BOSS: { label: "Boss Battle", summary: "Survive a scripted two-phase encounter." },
   CAMPFIRE: { label: "Campfire", summary: "Improve one card permanently." },
   BACKPACK: { label: "Backpack", summary: "Take a battle item." },
@@ -154,6 +155,17 @@ const REWARD_POOL = [
   rewardCard(createCard("Mole Man", 0, 6, 1, "blood", ["Burrower", "Mighty Leap", "Repulsive"]), "Rare"),
   rewardCard(createCard("Wolverine", 2, 3, 2, "blood", ["Blood Lust"]), "Rare"),
   rewardCard(createCard("Otter", 1, 1, 1, "blood", ["Waterborne"]), "Rare")
+];
+
+const EPIC_REWARD_POOL = [
+  rewardCard(createCard("Moose Buck", 3, 7, 3, "blood", []), "Epic"),
+  rewardCard(createCard("Dire Wolf", 2, 5, 3, "blood", ["Double Strike"]), "Epic"),
+  rewardCard(createCard("Urayuli", 7, 7, 4, "blood", []), "Epic"),
+  rewardCard(createCard("Lammergeier", 0, 4, 3, "bones", ["Airborne"]), "Epic"),
+  rewardCard(createCard("Child 13", 0, 1, 1, "blood", ["Many Lives", "Airborne"]), "Epic"),
+  rewardCard(createCard("Long Elk", 1, 2, 2, "blood", ["Touch of Death", "Burrower"]), "Epic"),
+  rewardCard(createCard("Amalgam", 3, 3, 2, "blood", ["Airborne", "Guardian"]), "Epic"),
+  rewardCard(createCard("Pack Rat", 2, 2, 2, "blood", ["Trinket Bearer", "Sharp Quills"]), "Epic")
 ];
 
 const CARD_LIBRARY = {
@@ -687,12 +699,26 @@ function generateMap() {
       nodeIndex += 1;
     }
 
+    const epicNode = {
+      id: `${region.toLowerCase()}_epic`,
+      type: "EPIC_BATTLE",
+      region,
+      position: nodeIndex,
+      regionPosition: nodeCount,
+      nextChoices: [],
+      visited: false,
+      completed: false
+    };
+    regionNodes.push(epicNode);
+    allNodes.push(epicNode);
+    nodeIndex += 1;
+
     const bossNode = {
       id: `${region.toLowerCase()}_boss`,
       type: "BOSS",
       region,
       position: nodeIndex,
-      regionPosition: nodeCount,
+      regionPosition: nodeCount + 1,
       nextChoices: [],
       visited: false,
       completed: false
@@ -702,6 +728,15 @@ function generateMap() {
     nodeIndex += 1;
 
     for (let i = 0; i < regionNodes.length - 1; i += 1) {
+      if (regionNodes[i].type === "EPIC_BATTLE") {
+        regionNodes[i].nextChoices.push(regionNodes[i + 1].position);
+        continue;
+      }
+      if (regionNodes[i + 1]?.type === "EPIC_BATTLE" && regionNodes[i + 2]?.type === "BOSS") {
+        regionNodes[i].nextChoices.push(regionNodes[i + 1].position);
+        regionNodes[i].nextChoices.push(regionNodes[i + 2].position);
+        continue;
+      }
       const choices = 2 + Math.floor(Math.random() * 2);
       for (let j = 0; j < choices && i + 1 + j < regionNodes.length; j += 1) {
         regionNodes[i].nextChoices.push(regionNodes[i + 1 + j].position);
@@ -776,7 +811,7 @@ function enterNode(node) {
     return;
   }
 
-  if (node.type === "BATTLE" || node.type === "BOSS") {
+  if (node.type === "BATTLE" || node.type === "EPIC_BATTLE" || node.type === "BOSS") {
     startBattle(node);
     return;
   }
@@ -816,7 +851,7 @@ function enterNode(node) {
 
 function startBattle(node) {
   state.mode = "battle";
-  state.currentScreen = node.type === "BOSS" ? "Boss Battle" : "Battle";
+  state.currentScreen = node.type === "BOSS" ? "Boss Battle" : node.type === "EPIC_BATTLE" ? "Epic Battle" : "Battle";
   state.battle = createBattleState();
   state.selection = createSelectionState();
   clearTransientCombatUi();
@@ -838,10 +873,14 @@ function startBattle(node) {
   drawPlayerCard();
   fillEnemyQueue();
   state.battle.awaitingDrawChoice = false;
-  setBattlePhase(node.type === "BOSS" ? `${getBossDisplayName()} awaits` : "Battle Ready", node.type === "BOSS" ? "enemy" : "neutral");
-  showTransientMessage(node.type === "BOSS" ? `${getBossDisplayName()} enters the fight.` : `${encounterProfile.name} begins.`, node.type === "BOSS" ? "enemy" : "neutral", 1800);
+  setBattlePhase(node.type === "BOSS" ? `${getBossDisplayName()} awaits` : node.type === "EPIC_BATTLE" ? "Epic Battle" : "Battle Ready", node.type === "BOSS" ? "enemy" : node.type === "EPIC_BATTLE" ? "warning" : "neutral");
+  showTransientMessage(
+    node.type === "BOSS" ? `${getBossDisplayName()} enters the fight.` : node.type === "EPIC_BATTLE" ? `${encounterProfile.name} stands between you and the boss.` : `${encounterProfile.name} begins.`,
+    node.type === "BOSS" ? "enemy" : node.type === "EPIC_BATTLE" ? "warning" : "neutral",
+    1800
+  );
 
-  appendLog(`Entered ${node.type === "BOSS" ? "a boss battle" : "a battle"} in ${node.region}.`);
+  appendLog(`Entered ${node.type === "BOSS" ? "a boss battle" : node.type === "EPIC_BATTLE" ? "an epic battle" : "a battle"} in ${node.region}.`);
   render();
 }
 
@@ -858,7 +897,7 @@ function getEncounterProfile(node) {
     };
   }
 
-  const tier = getEncounterTier(node);
+  const tier = getEncounterTier(node) + (node.type === "EPIC_BATTLE" ? 1 : 0);
   const pool = (ENCOUNTER_LIBRARY[node.region] || []).filter((entry) => tier >= (entry.minTier || 0));
   const chosen = pool[Math.floor(Math.random() * pool.length)] || {
     key: "fallback",
@@ -869,15 +908,58 @@ function getEncounterProfile(node) {
     openingBoard: () => [null, null, null, null],
     openingQueue: () => [null, null, null, null]
   };
-  return {
+  const profile = {
     key: chosen.key,
-    name: chosen.name,
-    summary: chosen.summary,
+    name: node.type === "EPIC_BATTLE" ? `${chosen.name} Elite` : chosen.name,
+    summary: node.type === "EPIC_BATTLE" ? `${chosen.summary} The enemy line is reinforced for a premium prize.` : chosen.summary,
     laneOrder: chosen.laneOrder || [0, 1, 2, 3],
     deck: chosen.deck(),
     openingBoard: chosen.openingBoard ? chosen.openingBoard() : [null, null, null, null],
     openingQueue: chosen.openingQueue ? chosen.openingQueue() : [null, null, null, null]
   };
+  return node.type === "EPIC_BATTLE" ? elevateEncounterProfile(profile, node.region) : profile;
+}
+
+function elevateEncounterProfile(profile, region) {
+  const deck = profile.deck.map(copyCard);
+  const eliteCard = getEpicEliteCard(region);
+  if (eliteCard) {
+    deck.push(eliteCard);
+  }
+  if (deck.length > 0) {
+    const target = deck[Math.floor(Math.random() * deck.length)];
+    if (target) {
+      target.attack += 1;
+      target.health += 1;
+    }
+  }
+  const openingQueue = normalizeEncounterRow(profile.openingQueue);
+  const emptyLane = openingQueue.findIndex((card) => !card);
+  if (emptyLane >= 0 && eliteCard) {
+    openingQueue[emptyLane] = copyCard(eliteCard);
+  }
+  return {
+    key: `${profile.key}-epic`,
+    name: profile.name,
+    summary: profile.summary,
+    laneOrder: profile.laneOrder,
+    deck,
+    openingBoard: normalizeEncounterRow(profile.openingBoard),
+    openingQueue
+  };
+}
+
+function getEpicEliteCard(region) {
+  if (region === "Woodlands") {
+    return createCard("Dire Wolf", 2, 5, 3, "blood", ["Double Strike"]);
+  }
+  if (region === "Wetlands") {
+    return createCard("Kingfisher", 2, 2, 1, "blood", ["Airborne", "Waterborne"]);
+  }
+  if (region === "Snowline") {
+    return createCard("Grizzly Bear", 4, 6, 3, "blood", []);
+  }
+  return createCard("Wolf", 3, 2, 2, "blood", []);
 }
 
 function normalizeEncounterRow(row = []) {
@@ -961,15 +1043,21 @@ function getBossDeck(bossType, phase) {
 
 function showCardReward() {
   state.mode = "reward";
-  state.currentScreen = "Choose a Reward";
   const currentNode = getCurrentNode();
   if (currentNode && currentNode.type === "BOSS") {
+    state.currentScreen = "Choose a Reward";
     state.rewardOptions = [pickRewardCardForTier("Uncommon"), pickRewardCardForTier("Rare"), pickRewardCardForTier("Rare")];
     state.items.push(copyItem(shuffle(Object.values(ITEM_DEFS))[0]));
     appendLog("Boss reward: you also found an item.");
+  } else if (currentNode && currentNode.type === "EPIC_BATTLE") {
+    state.currentScreen = "Choose an Epic Reward";
+    state.rewardOptions = [pickRewardCardForTier("Epic"), pickRewardCardForTier("Epic"), pickRewardCardForTier("Epic")];
+    appendLog("Epic battle reward: choose one premium card.");
   } else if (state.battlesWon > 0 && state.battlesWon % 4 === 0) {
+    state.currentScreen = "Choose a Reward";
     state.rewardOptions = [pickRewardCardForTier("Uncommon"), pickRewardCardForTier("Uncommon"), pickRewardCardForTier("Rare")];
   } else {
+    state.currentScreen = "Choose a Reward";
     state.rewardOptions = [pickRewardCard(), pickRewardCard(), pickRewardCard()];
   }
   render();
@@ -992,7 +1080,9 @@ function pickRewardCard() {
 }
 
 function pickRewardCardForTier(rarity) {
-  const pool = REWARD_POOL.filter((entry) => entry.rarity === rarity);
+  const pool = rarity === "Epic"
+    ? EPIC_REWARD_POOL
+    : REWARD_POOL.filter((entry) => entry.rarity === rarity);
   const selected = pool[Math.floor(Math.random() * pool.length)];
   return { card: copyCard(selected.card), rarity: selected.rarity };
 }
@@ -1642,7 +1732,7 @@ function showRunComplete() {
 
 function setBattleScreenState(node) {
   state.mode = "battle";
-  state.currentScreen = node && node.type === "BOSS" ? "Boss Battle" : "Battle";
+  state.currentScreen = node && node.type === "BOSS" ? "Boss Battle" : node && node.type === "EPIC_BATTLE" ? "Epic Battle" : "Battle";
   state.eventState = null;
 }
 
@@ -1668,7 +1758,7 @@ function restoreNodeScreenState(node) {
     return;
   }
 
-  if (node.type === "BATTLE" || node.type === "BOSS") {
+  if (node.type === "BATTLE" || node.type === "EPIC_BATTLE" || node.type === "BOSS") {
     setBattleScreenState(node);
     return;
   }
@@ -2647,6 +2737,9 @@ function getScreenSubtitle(node) {
     if (node.type === "BOSS") {
       return `${getBossDisplayName()} in ${node.region}, phase ${state.battle.bossPhase}.`;
     }
+    if (node.type === "EPIC_BATTLE") {
+      return `Optional elite fight in ${node.region} for a premium reward.`;
+    }
     return `Battle in ${node.region}.`;
   }
   if (state.mode === "reward") return "Take one card and strengthen the run.";
@@ -3447,6 +3540,9 @@ function getNodeDisplayName(type) {
 }
 
 function getNodeSummary(type, region = "") {
+  if (type === "EPIC_BATTLE") {
+    return "Optional elite encounter before the boss with a premium three-card reward.";
+  }
   if (type === "BATTLE" && region === "Wetlands") {
     return "Expect awkward water lanes and airborne pressure.";
   }

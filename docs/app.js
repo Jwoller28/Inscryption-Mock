@@ -3,12 +3,12 @@ const SAVE_KEY = "inscryption-mock-web-save-v4";
 const LEGACY_SAVE_KEYS = ["inscryption-mock-web-save-v3"];
 const REGIONS = ["Woodlands", "Wetlands", "Snowline"];
 const MAP_LANE_COUNT = 4;
-const MAP_COLUMN_SPACING = 138;
-const MAP_LANE_SPACING = 112;
-const MAP_NODE_WIDTH = 104;
-const MAP_NODE_HEIGHT = 82;
-const MAP_PADDING_X = 44;
-const MAP_PADDING_Y = 54;
+const MAP_COLUMN_SPACING = 144;
+const MAP_LANE_SPACING = 88;
+const MAP_NODE_WIDTH = 78;
+const MAP_NODE_HEIGHT = 78;
+const MAP_PADDING_X = 42;
+const MAP_PADDING_Y = 86;
 const MAP_REGION_GAP = 1;
 const NODE_META = {
   BATTLE: { label: "Battle", summary: "Fight for a reward card." },
@@ -74,6 +74,17 @@ const SIGIL_ICONS = {
   "Touch of Death": "T",
   "Many Lives": "M",
   Unkillable: "U"
+};
+const MAP_NODE_GLYPHS = {
+  BATTLE: "+",
+  EPIC_BATTLE: "!!",
+  BOSS: "X",
+  CAMPFIRE: "^",
+  BACKPACK: "[]",
+  SIGIL_TRANSFER: "*",
+  WOODCARVER: "T",
+  MYCOLOGISTS: "M",
+  ECONOMY: "$"
 };
 const ITEM_DEFS = {
   pliers: { id: "pliers", name: "Pliers", description: "Deal 1 direct damage to the enemy scale." },
@@ -3003,9 +3014,9 @@ function renderMapView() {
   normalizeMapLayout(state.map);
   const currentNode = getCurrentNode();
   const reachablePositions = new Set(currentNode?.nextChoices || []);
-  const maxColumn = state.map.reduce((max, node) => Math.max(max, node.column || 0), 0);
-  const boardWidth = MAP_PADDING_X * 2 + maxColumn * MAP_COLUMN_SPACING + MAP_NODE_WIDTH;
-  const boardHeight = MAP_PADDING_Y * 2 + (MAP_LANE_COUNT - 1) * MAP_LANE_SPACING + MAP_NODE_HEIGHT;
+  const metrics = getMapMetrics();
+  const boardWidth = metrics.width;
+  const boardHeight = metrics.height;
 
   refs.mapBoard.style.width = `${boardWidth}px`;
   refs.mapBoard.style.height = `${boardHeight}px`;
@@ -3016,11 +3027,11 @@ function renderMapView() {
   refs.mapRegions.innerHTML = "";
   refs.mapNodes.innerHTML = "";
 
-  renderMapRegions(boardHeight);
-  renderMapConnections(currentNode, reachablePositions);
-  renderMapNodes(currentNode, reachablePositions);
+  renderMapRegions(metrics);
+  renderMapConnections(currentNode, reachablePositions, metrics);
+  renderMapNodes(currentNode, reachablePositions, metrics);
   renderMapSummary(currentNode, reachablePositions);
-  syncMapViewport(currentNode);
+  syncMapViewport(currentNode, metrics);
 }
 
 function renderMapSummary(currentNode, reachablePositions) {
@@ -3033,7 +3044,7 @@ function renderMapSummary(currentNode, reachablePositions) {
   const choices = [...reachablePositions].map(findNodeByIndex).filter(Boolean);
   const currentLabel = getNodeDisplayName(currentNode.type);
   refs.mapSummary.innerHTML = choices.length
-    ? `<strong>${escapeHtml(`${currentNode.region} ${currentLabel}`)}</strong><span class="choice-copy">Highlighted nodes are reachable next. Scroll ahead to compare routes before you commit.</span>`
+    ? `<strong>${escapeHtml(`${currentNode.region} ${currentLabel}`)}</strong><span class="choice-copy">Follow one highlighted trail upward. Routes stay visible several stops ahead so tradeoffs are readable before you commit.</span>`
     : `<strong>${escapeHtml(`${currentNode.region} ${currentLabel}`)}</strong><span class="choice-copy">No further paths remain in this run.</span>`;
 
   refs.mapLegend.innerHTML = [
@@ -3053,43 +3064,55 @@ function renderMapSummary(currentNode, reachablePositions) {
   }
 }
 
-function renderMapRegions(boardHeight) {
+function getMapMetrics() {
+  const maxColumn = state.map.reduce((max, node) => Math.max(max, node.column || 0), 0);
+  const width = MAP_PADDING_X * 2 + (MAP_LANE_COUNT - 1) * MAP_LANE_SPACING + MAP_NODE_WIDTH;
+  const height = MAP_PADDING_Y * 2 + maxColumn * MAP_COLUMN_SPACING + MAP_NODE_HEIGHT;
+  return { width, height, maxColumn };
+}
+
+function renderMapRegions(metrics) {
   REGIONS.forEach((region) => {
     const regionNodes = state.map.filter((node) => node.region === region);
     if (!regionNodes.length) {
       return;
     }
-    const minColumn = Math.min(...regionNodes.map((node) => node.column));
-    const maxColumn = Math.max(...regionNodes.map((node) => node.column));
+    const minColumn = Math.min(...regionNodes.map((node) => node.column || 0));
+    const maxColumn = Math.max(...regionNodes.map((node) => node.column || 0));
+    const topY = getMapNodePoint({ column: maxColumn, lane: 0 }, metrics).y - MAP_NODE_HEIGHT / 2 - 34;
+    const bottomY = getMapNodePoint({ column: minColumn, lane: 0 }, metrics).y + MAP_NODE_HEIGHT / 2 + 18;
     const marker = document.createElement("div");
     marker.className = "map-region-marker";
-    marker.style.left = `${MAP_PADDING_X + minColumn * MAP_COLUMN_SPACING - 18}px`;
-    marker.style.width = `${(maxColumn - minColumn + 1) * MAP_COLUMN_SPACING + 36}px`;
+    marker.style.top = `${topY}px`;
+    marker.style.left = "12px";
+    marker.style.right = "12px";
+    marker.style.height = `${Math.max(bottomY - topY, 110)}px`;
     marker.innerHTML = `<span class="map-region-label">${escapeHtml(region)}</span>`;
     refs.mapRegions.appendChild(marker);
 
     if (region !== REGIONS[REGIONS.length - 1]) {
       const divider = document.createElement("div");
       divider.className = "map-region-divider";
-      divider.style.left = `${MAP_PADDING_X + (maxColumn + 0.5) * MAP_COLUMN_SPACING}px`;
-      divider.style.height = `${boardHeight - 30}px`;
+      divider.style.top = `${bottomY - 12}px`;
+      divider.style.left = "18px";
+      divider.style.right = "18px";
       refs.mapRegions.appendChild(divider);
     }
   });
 }
 
-function renderMapConnections(currentNode, reachablePositions) {
+function renderMapConnections(currentNode, reachablePositions, metrics) {
   state.map.forEach((node) => {
     node.nextChoices.forEach((nextPosition) => {
       const target = findNodeByIndex(nextPosition);
       if (!target) {
         return;
       }
-      const start = getMapNodePoint(node, "end");
-      const end = getMapNodePoint(target, "start");
-      const dx = Math.max((end.x - start.x) * 0.45, 22);
+      const start = getMapNodePoint(node, metrics, "end");
+      const end = getMapNodePoint(target, metrics, "start");
+      const dy = Math.max((start.y - end.y) * 0.38, 26);
       const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      path.setAttribute("d", `M ${start.x} ${start.y} C ${start.x + dx} ${start.y}, ${end.x - dx} ${end.y}, ${end.x} ${end.y}`);
+      path.setAttribute("d", `M ${start.x} ${start.y} C ${start.x} ${start.y - dy}, ${end.x} ${end.y + dy}, ${end.x} ${end.y}`);
       path.setAttribute("class", getMapLinkClass(node, target, currentNode, reachablePositions));
       refs.mapLinks.appendChild(path);
     });
@@ -3108,21 +3131,20 @@ function getMapLinkClass(node, target, currentNode, reachablePositions) {
   return classes.join(" ");
 }
 
-function renderMapNodes(currentNode, reachablePositions) {
+function renderMapNodes(currentNode, reachablePositions, metrics) {
   state.map.forEach((node) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = getMapNodeClasses(node, currentNode, reachablePositions);
-    const point = getMapNodePoint(node);
+    const point = getMapNodePoint(node, metrics);
     button.style.left = `${point.x - MAP_NODE_WIDTH / 2}px`;
     button.style.top = `${point.y - MAP_NODE_HEIGHT / 2}px`;
     const reachable = reachablePositions.has(node.position);
     button.tabIndex = reachable ? 0 : -1;
     button.setAttribute("aria-disabled", String(!reachable));
     button.innerHTML = [
-      `<span class="map-node-type">${escapeHtml(getNodeDisplayName(node.type))}</span>`,
-      `<strong class="map-node-region">${escapeHtml(node.region)}</strong>`,
-      `<span class="map-node-copy">${escapeHtml(getNodeSummary(node.type, node.region))}</span>`
+      `<span class="map-node-icon">${escapeHtml(getMapNodeGlyph(node.type))}</span>`,
+      `<span class="map-node-label">${escapeHtml(getMapNodeShortLabel(node.type))}</span>`
     ].join("");
     button.setAttribute("aria-label", `${getNodeDisplayName(node.type)} in ${node.region}`);
     if (reachable) {
@@ -3152,19 +3174,37 @@ function getMapNodeClasses(node, currentNode, reachablePositions) {
   return classes.join(" ");
 }
 
-function getMapNodePoint(node, edge = "center") {
-  const centerX = MAP_PADDING_X + (node.column || 0) * MAP_COLUMN_SPACING + MAP_NODE_WIDTH / 2;
-  const centerY = MAP_PADDING_Y + (node.lane || 0) * MAP_LANE_SPACING + MAP_NODE_HEIGHT / 2;
+function getMapNodePoint(node, metrics = getMapMetrics(), edge = "center") {
+  const lane = node.lane || 0;
+  const centerX = MAP_PADDING_X + lane * MAP_LANE_SPACING + MAP_NODE_WIDTH / 2 + getMapLaneDrift(node);
+  const centerY = MAP_PADDING_Y + (metrics.maxColumn - (node.column || 0)) * MAP_COLUMN_SPACING + MAP_NODE_HEIGHT / 2;
   if (edge === "start") {
-    return { x: centerX - MAP_NODE_WIDTH / 2 + 8, y: centerY };
+    return { x: centerX, y: centerY + MAP_NODE_HEIGHT / 2 - 8 };
   }
   if (edge === "end") {
-    return { x: centerX + MAP_NODE_WIDTH / 2 - 8, y: centerY };
+    return { x: centerX, y: centerY - MAP_NODE_HEIGHT / 2 + 8 };
   }
   return { x: centerX, y: centerY };
 }
 
-function syncMapViewport(currentNode) {
+function getMapLaneDrift(node) {
+  const seed = ((node.position || 0) * 17 + (node.column || 0) * 13 + (node.lane || 0) * 7) % 5;
+  return (seed - 2) * 8;
+}
+
+function getMapNodeGlyph(type) {
+  return MAP_NODE_GLYPHS[type] || "?";
+}
+
+function getMapNodeShortLabel(type) {
+  if (type === "SIGIL_TRANSFER") return "Sigil";
+  if (type === "EPIC_BATTLE") return "Epic";
+  if (type === "WOODCARVER") return "Totem";
+  if (type === "MYCOLOGISTS") return "Merge";
+  return getNodeDisplayName(type).replace(" Battle", "");
+}
+
+function syncMapViewport(currentNode, metrics = getMapMetrics()) {
   if (!currentNode || !refs.mapScroll) {
     return;
   }
@@ -3174,8 +3214,9 @@ function syncMapViewport(currentNode) {
   }
   uiState.mapFocusKey = focusKey;
   window.requestAnimationFrame(() => {
-    const targetLeft = Math.max(0, MAP_PADDING_X + currentNode.column * MAP_COLUMN_SPACING - refs.mapScroll.clientWidth * 0.22);
-    refs.mapScroll.scrollTo({ left: targetLeft, behavior: "auto" });
+    const point = getMapNodePoint(currentNode, metrics);
+    const targetTop = Math.max(0, point.y - refs.mapScroll.clientHeight * 0.72);
+    refs.mapScroll.scrollTo({ top: targetTop, behavior: "auto" });
   });
 }
 

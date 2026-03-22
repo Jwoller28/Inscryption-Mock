@@ -1346,24 +1346,28 @@ function showCardReward() {
   const currentNode = getCurrentNode();
   if (currentNode && currentNode.type === "BOSS") {
     state.currentScreen = "Choose a Reward";
-    state.rewardOptions = [pickRewardCardForTier("Uncommon"), pickRewardCardForTier("Rare"), pickRewardCardForTier("Rare")];
+    state.rewardOptions = pickUniqueRewardCardsForTiers(["Uncommon", "Rare", "Rare"]);
     state.items.push(copyItem(shuffle(Object.values(ITEM_DEFS))[0]));
     appendLog("Boss reward: you also found an item.");
   } else if (currentNode && currentNode.type === "EPIC_BATTLE") {
     state.currentScreen = "Choose an Epic Reward";
-    state.rewardOptions = [pickRewardCardForTier("Epic"), pickRewardCardForTier("Epic"), pickRewardCardForTier("Epic")];
+    state.rewardOptions = pickUniqueRewardCardsForTiers(["Epic", "Epic", "Epic"]);
     appendLog("Epic battle reward: choose one premium card.");
   } else if (state.battlesWon > 0 && state.battlesWon % 4 === 0) {
     state.currentScreen = "Choose a Reward";
-    state.rewardOptions = [pickRewardCardForTier("Uncommon"), pickRewardCardForTier("Uncommon"), pickRewardCardForTier("Rare")];
+    state.rewardOptions = pickUniqueRewardCardsForTiers(["Uncommon", "Uncommon", "Rare"]);
   } else {
     state.currentScreen = "Choose a Reward";
-    state.rewardOptions = [pickRewardCard(), pickRewardCard(), pickRewardCard()];
+    state.rewardOptions = pickUniqueRewardCardsForTiers([
+      determineRewardRarity(),
+      determineRewardRarity(),
+      determineRewardRarity()
+    ]);
   }
   render();
 }
 
-function pickRewardCard() {
+function determineRewardRarity() {
   const node = getCurrentNode();
   const progress = node ? node.position / Math.max(state.map.length - 1, 1) : 0;
   const metaBoost = Math.min(state.meta?.completedBosses || 0, 2);
@@ -1376,14 +1380,30 @@ function pickRewardCard() {
   } else {
     rarity = roll < 70 - metaBoost * 2 ? "Common" : roll < 92 - metaBoost ? "Uncommon" : "Rare";
   }
-  return pickRewardCardForTier(rarity);
+  return rarity;
 }
 
-function pickRewardCardForTier(rarity) {
+function pickUniqueRewardCardsForTiers(rarities) {
+  const usedNames = new Set();
+  return rarities.map((rarity) => pickRewardCardForTier(rarity, usedNames));
+}
+
+function pickRewardCard() {
+  return pickRewardCardForTier(determineRewardRarity());
+}
+
+function pickRewardCardForTier(rarity, usedNames = null) {
   const pool = rarity === "Epic"
     ? EPIC_REWARD_POOL
     : REWARD_POOL.filter((entry) => entry.rarity === rarity);
-  const selected = pool[Math.floor(Math.random() * pool.length)];
+  const availablePool = usedNames
+    ? pool.filter((entry) => !usedNames.has(entry.card.name))
+    : pool;
+  const sourcePool = availablePool.length ? availablePool : pool;
+  const selected = sourcePool[Math.floor(Math.random() * sourcePool.length)];
+  if (usedNames) {
+    usedNames.add(selected.card.name);
+  }
   return { card: copyCard(selected.card), rarity: selected.rarity };
 }
 
@@ -1585,7 +1605,7 @@ function getTraderConfig() {
     key: progress > 0.72 ? "lavish" : "standard",
     title: progress > 0.72 ? "High Trader" : "Trader",
     description: progress > 0.72 ? "Late traders demand a card first, then reveal premium stock." : "Trade one card away for a curated offer.",
-    offers: [pickRewardCardForTier("Uncommon"), pickRewardCardForTier("Uncommon"), pickRewardCardForTier(progress > 0.72 ? "Rare" : "Uncommon")]
+    offers: pickUniqueRewardCardsForTiers(["Uncommon", "Uncommon", progress > 0.72 ? "Rare" : "Uncommon"])
   };
 }
 
@@ -1598,12 +1618,21 @@ function buildTraderOffers(tradedCard, haggling = "standard") {
   const rarePool = REWARD_POOL.filter((entry) => entry.rarity === "Rare");
   const uncommonPool = REWARD_POOL.filter((entry) => entry.rarity === "Uncommon");
   const offers = [];
-  const first = matchingPool.length ? matchingPool[Math.floor(Math.random() * matchingPool.length)] : uncommonPool[Math.floor(Math.random() * uncommonPool.length)];
+  const usedNames = new Set();
+  const pickFromPool = (pool, fallbackPool = pool) => {
+    const available = pool.filter((entry) => !usedNames.has(entry.card.name));
+    const sourcePool = available.length ? available : fallbackPool.filter((entry) => !usedNames.has(entry.card.name));
+    const finalPool = sourcePool.length ? sourcePool : fallbackPool;
+    const picked = finalPool[Math.floor(Math.random() * finalPool.length)];
+    usedNames.add(picked.card.name);
+    return picked;
+  };
+  const first = matchingPool.length ? pickFromPool(matchingPool, uncommonPool) : pickFromPool(uncommonPool);
   offers.push({ card: copyCard(first.card), rarity: first.rarity });
-  const second = uncommonPool[Math.floor(Math.random() * uncommonPool.length)];
+  const second = pickFromPool(uncommonPool);
   offers.push({ card: copyCard(second.card), rarity: second.rarity });
   const finisherPool = rareChance ? rarePool : [...uncommonPool, ...rarePool];
-  const third = finisherPool[Math.floor(Math.random() * finisherPool.length)];
+  const third = pickFromPool(finisherPool);
   offers.push({ card: copyCard(third.card), rarity: third.rarity });
   return offers;
 }

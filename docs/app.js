@@ -808,7 +808,10 @@ function chooseEpicPlacement(columns, regionIndex = 0) {
     .filter((columnData) => columnData.regionColumn > 0 && columnData.regionColumn < columns.length - 1)
     .filter((columnData) => columnData.lanes.length >= 2);
 
-  let targetColumn = candidates[Math.floor(Math.random() * candidates.length)];
+  let targetColumn = pickWeightedColumn(candidates, (columnData) => {
+    const progress = getRegionColumnProgress(columnData.regionColumn, columns.length);
+    return progress < 0.18 || progress > 0.88 ? 0 : progress < 0.35 ? 1 : progress < 0.75 ? 2.6 : 1.4;
+  });
   if (!targetColumn) {
     targetColumn = columns[Math.min(Math.max(1, 1 + Math.floor(Math.random() * Math.max(columns.length - 2, 1))), columns.length - 2)];
     const epicLane = clampLane(pickAnchorLane(targetColumn.lanes, regionIndex) + (targetColumn.lanes[0] === 0 ? 1 : -1));
@@ -827,12 +830,21 @@ function chooseEpicPlacement(columns, regionIndex = 0) {
 }
 
 function createBranchLanes(previousLanes, column, totalColumns) {
-  const nearingBoss = column >= totalColumns - 2;
-  const branchChance = nearingBoss ? 0.18 : previousLanes.length <= 1 ? 0.48 : 0.32;
-  const targetCount = Math.min(
-    3,
-    Math.max(1, previousLanes.length + (Math.random() < branchChance ? 1 : 0))
-  );
+  const progress = getRegionColumnProgress(column, totalColumns);
+  let targetCount = previousLanes.length;
+
+  if (progress < 0.2) {
+    targetCount = 1 + (Math.random() < 0.28 ? 1 : 0);
+  } else if (progress < 0.68) {
+    targetCount = previousLanes.length + (Math.random() < (previousLanes.length <= 1 ? 0.42 : 0.24) ? 1 : 0);
+  } else {
+    targetCount = Math.min(previousLanes.length, 2);
+    if (Math.random() < 0.18) {
+      targetCount = Math.max(1, targetCount - 1);
+    }
+  }
+
+  targetCount = Math.min(MAP_LANE_COUNT, Math.max(1, targetCount));
   const lanes = new Set(previousLanes.map((lane) => clampLane(lane + Math.floor(Math.random() * 3) - 1)));
   while (lanes.size < targetCount) {
     const seed = previousLanes[Math.floor(Math.random() * previousLanes.length)] ?? Math.floor(MAP_LANE_COUNT / 2);
@@ -983,32 +995,82 @@ function selectNodeType(region, regionPosition, nodeCount) {
     return "BATTLE";
   }
 
-  const roll = Math.floor(Math.random() * 140);
-  if (roll < 62) {
-    return "BATTLE";
+  const progress = getRegionColumnProgress(regionPosition, nodeCount);
+  const weights = progress < 0.25
+    ? [
+      ["BATTLE", 5.4],
+      ["CAMPFIRE", 2.2],
+      ["BACKPACK", 2.4],
+      ["SIGIL_TRANSFER", 1.2],
+      ["WOODCARVER", 1],
+      ["MYCOLOGISTS", 0.35],
+      ["ECONOMY", 0.55]
+    ]
+    : progress < 0.7
+      ? [
+        ["BATTLE", 4],
+        ["CAMPFIRE", 1.8],
+        ["BACKPACK", 1.6],
+        ["SIGIL_TRANSFER", 1.6],
+        ["WOODCARVER", 1.8],
+        ["MYCOLOGISTS", 1.2],
+        ["ECONOMY", 1.2]
+      ]
+      : [
+        ["BATTLE", 5.2],
+        ["CAMPFIRE", 1.2],
+        ["BACKPACK", 0.9],
+        ["SIGIL_TRANSFER", 1.25],
+        ["WOODCARVER", 1.5],
+        ["MYCOLOGISTS", 1.8],
+        ["ECONOMY", 1.45]
+      ];
+
+  if (region === "Wetlands") {
+    adjustWeightedEntry(weights, "BACKPACK", progress < 0.5 ? 0.5 : 0.2);
   }
-  if (roll < 77) {
-    return "CAMPFIRE";
+  if (region === "Snowline") {
+    adjustWeightedEntry(weights, "MYCOLOGISTS", 0.4);
+    adjustWeightedEntry(weights, "BATTLE", 0.5);
   }
-  if (roll < 89) {
-    return "BACKPACK";
+
+  return pickWeightedValue(weights) || "BATTLE";
+}
+
+function getRegionColumnProgress(regionPosition, totalColumns) {
+  return regionPosition / Math.max(totalColumns - 1, 1);
+}
+
+function pickWeightedColumn(columns, getWeight) {
+  const weighted = columns
+    .map((columnData) => ({ columnData, weight: Math.max(0, getWeight(columnData) || 0) }))
+    .filter((entry) => entry.weight > 0);
+  if (!weighted.length) {
+    return columns[0] || null;
   }
-  if (roll < 102) {
-    return "SIGIL_TRANSFER";
+  return pickWeightedValue(weighted.map((entry) => [entry.columnData, entry.weight]));
+}
+
+function adjustWeightedEntry(weightPairs, key, delta) {
+  const match = weightPairs.find((entry) => entry[0] === key);
+  if (match) {
+    match[1] = Math.max(0.1, match[1] + delta);
   }
-  if (roll < 116) {
-    return "WOODCARVER";
+}
+
+function pickWeightedValue(weightPairs) {
+  const total = weightPairs.reduce((sum, [, weight]) => sum + Math.max(weight, 0), 0);
+  if (total <= 0) {
+    return weightPairs[0]?.[0] ?? null;
   }
-  if (roll < 128) {
-    return "MYCOLOGISTS";
+  let roll = Math.random() * total;
+  for (const [value, weight] of weightPairs) {
+    roll -= Math.max(weight, 0);
+    if (roll <= 0) {
+      return value;
+    }
   }
-  if (region === "Wetlands" && roll < 134) {
-    return "BACKPACK";
-  }
-  if (region === "Snowline" && roll < 136) {
-    return "MYCOLOGISTS";
-  }
-  return "ECONOMY";
+  return weightPairs[weightPairs.length - 1]?.[0] ?? null;
 }
 
 function getCurrentNode() {

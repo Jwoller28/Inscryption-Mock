@@ -3,6 +3,8 @@ Original prompt: There are 2 big issues but ill let you decide how / the order w
 - Fixed Fledgling timing in `docs/app.js` so cards evolve after surviving a full turn cycle instead of immediately when the turn ends.
 - Tightened portrait battle layout sizing in `docs/styles.css` so the board rows size to the viewport/container instead of being stretched by internal content width.
 - Added unique-offer reward selection in `docs/app.js` so a single reward/trader choice set will not show the same card name twice.
+- Updated `docs/app.js` so any creature death grants bones, not just allied deaths.
 - TODO: Verify on a portrait/mobile viewport that board rows no longer shift horizontally while hand size changes.
 - TODO: Verify in battle that Wolf Cub attacks as Wolf Cub on the first end turn and only evolves at the start of its next active turn.
 - TODO: Verify reward and trader screens no longer surface duplicate card names in the same offer set.
+- Verified by code inspection: overkill damage does not currently spill through a front enemy into the `enemyQueue`; combat stops at the front defender.

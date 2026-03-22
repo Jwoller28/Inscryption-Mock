@@ -2630,9 +2630,7 @@ function createAdjacentChimes(row, lane) {
 }
 
 function onCardRemoved(card, belongsToPlayer, cause) {
-  if (belongsToPlayer) {
-    gainBones(card.sigils.includes("Bone King") ? 4 : 1);
-  }
+  gainBones(card.sigils.includes("Bone King") ? 4 : 1);
 
   if (belongsToPlayer && card.sigils.includes("Unkillable")) {
     state.battle.hand.push(copyCard(card));

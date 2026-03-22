@@ -490,7 +490,7 @@ function createInitialState() {
     battlesWon: 0,
     highestNodeReached: 0,
     map: [],
-    currentNodeIndex: 0,
+    currentNodeIndex: null,
     currentDeck: [],
     items: [],
     battle: createBattleState(),
@@ -640,9 +640,8 @@ function startNewRun() {
   state.map = generateMap();
   state.currentDeck = buildStarterDeck();
   state.items = getStarterItems(state.meta.activeStarterKey);
-  moveToNode(0);
   appendLog(`Started a new run with ${getStarterUnlockLabel(state.meta.activeStarterKey)}.`);
-  enterNode(getCurrentNode());
+  showMapSelection();
 }
 
 function clearSave() {
@@ -727,7 +726,7 @@ function generateMap() {
     columns.push({
       regionColumn: 0,
       lanes: [startLane],
-      fixedType: "BATTLE"
+      fixedType: regionIndex === 0 ? chooseOpeningNodeType() : "BATTLE"
     });
 
     for (let column = 1; column < normalColumns; column += 1) {
@@ -1035,6 +1034,20 @@ function selectNodeType(region, regionPosition, nodeCount) {
   }
 
   return pickWeightedValue(weights) || "BATTLE";
+}
+
+function chooseOpeningNodeType() {
+  if (Math.random() < 0.99) {
+    return "BATTLE";
+  }
+  return pickWeightedValue([
+    ["CAMPFIRE", 1.8],
+    ["BACKPACK", 1.8],
+    ["SIGIL_TRANSFER", 1.1],
+    ["WOODCARVER", 1],
+    ["MYCOLOGISTS", 0.45],
+    ["ECONOMY", 0.65]
+  ]) || "BATTLE";
 }
 
 function getRegionColumnProgress(regionPosition, totalColumns) {
@@ -1379,9 +1392,17 @@ function showMapSelection() {
   state.currentScreen = "Choose Your Path";
   state.eventState = {
     type: "map",
-    choices: currentNode ? currentNode.nextChoices.map(findNodeByIndex) : []
+    choices: getAvailableMapChoices(currentNode)
   };
   render();
+}
+
+function getAvailableMapChoices(currentNode = getCurrentNode()) {
+  if (currentNode) {
+    return currentNode.nextChoices.map(findNodeByIndex).filter(Boolean);
+  }
+  const firstNode = state.map[0] || null;
+  return firstNode ? [firstNode] : [];
 }
 
 function showCampfireEvent() {
@@ -2053,7 +2074,7 @@ function setMapScreenState(node) {
   state.currentScreen = "Choose Your Path";
   state.eventState = {
     type: "map",
-    choices: node ? node.nextChoices.map(findNodeByIndex) : []
+    choices: getAvailableMapChoices(node)
   };
 }
 
@@ -2620,7 +2641,8 @@ function chooseReward(index) {
 
 function chooseMapNode(index) {
   const currentNode = getCurrentNode();
-  if (!currentNode?.nextChoices.includes(index)) {
+  const validChoices = getAvailableMapChoices(currentNode).map((node) => node.position);
+  if (!validChoices.includes(index)) {
     return;
   }
   moveToNode(index);
@@ -3048,7 +3070,7 @@ function renderMeta() {
   const node = getCurrentNode();
   refs.screenText.textContent = state.currentScreen || "Battle";
   refs.regionText.textContent = node ? node.region : "Run";
-  refs.progressText.textContent = node ? getProgressDisplay(node) : "No node";
+  refs.progressText.textContent = getProgressDisplay(node);
   refs.saveText.textContent = state.saveStatus;
   refs.screenTitle.textContent = state.currentScreen || "Battle";
   refs.screenSubtitle.textContent = getScreenSubtitle(node);
@@ -3056,7 +3078,7 @@ function renderMeta() {
 
 function getProgressDisplay(node) {
   if (!node) {
-    return "No node";
+    return "Start";
   }
   if (node.type === "BOSS") {
     return "Boss";
@@ -3125,7 +3147,7 @@ function renderMapView() {
 
   normalizeMapLayout(state.map);
   const currentNode = getCurrentNode();
-  const reachablePositions = new Set(currentNode?.nextChoices || []);
+  const reachablePositions = new Set(getAvailableMapChoices(currentNode).map((node) => node.position));
   const metrics = getMapMetrics();
   const boardWidth = metrics.width;
   const boardHeight = metrics.height;
@@ -3147,13 +3169,20 @@ function renderMapView() {
 }
 
 function renderMapSummary(currentNode, reachablePositions) {
+  const choices = [...reachablePositions].map(findNodeByIndex).filter(Boolean);
   if (!currentNode) {
-    refs.mapSummary.innerHTML = `<p class="choice-copy">No route remains.</p>`;
-    refs.mapLegend.innerHTML = "";
+    refs.mapSummary.innerHTML = choices.length
+      ? `<strong>Choose Your First Stop</strong><span class="choice-copy">Most runs begin with a battle, but the first node can occasionally be another trail event. Select the highlighted stop to begin.</span>`
+      : `<p class="choice-copy">No route remains.</p>`;
+    refs.mapLegend.innerHTML = choices.length
+      ? [
+        `<span class="map-legend-chip reachable">Start</span>`,
+        `<span class="map-legend-chip locked">Future</span>`
+      ].join("")
+      : "";
     return;
   }
 
-  const choices = [...reachablePositions].map(findNodeByIndex).filter(Boolean);
   const currentLabel = getNodeDisplayName(currentNode.type);
   refs.mapSummary.innerHTML = choices.length
     ? `<strong>${escapeHtml(`${currentNode.region} ${currentLabel}`)}</strong><span class="choice-copy">Follow one highlighted trail upward. Routes stay visible several stops ahead so tradeoffs are readable before you commit.</span>`

@@ -4041,8 +4041,8 @@ function renderChoiceScreen() {
     refs.choiceSummary.innerHTML = `<p class="choice-copy">Choose one reward card.</p>`;
     state.rewardOptions.forEach((option, index) => {
       const card = document.createElement("button");
-      card.className = "choice-card card-choice";
-      card.innerHTML = `${formatCardMarkup(option.card)}<span class="card-meta">Rarity: ${escapeHtml(option.rarity)}</span>`;
+      card.className = `choice-card card-choice reward-choice rarity-${option.rarity.toLowerCase()}`;
+      card.innerHTML = `<span class="reward-rarity">${escapeHtml(option.rarity)}</span>${formatCardMarkup(option.card)}`;
       card.addEventListener("click", () => chooseReward(index));
       bindSigilButtons(card, option.card);
       refs.choiceActions.appendChild(card);

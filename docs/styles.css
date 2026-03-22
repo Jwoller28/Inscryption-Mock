@@ -21,6 +21,12 @@
   --radius-panel: 28px;
   --radius-card: 18px;
   --radius-pill: 999px;
+  --paper-grain:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.06), transparent 26%),
+    radial-gradient(circle at 18% 18%, rgba(255, 245, 221, 0.12), transparent 18%),
+    radial-gradient(circle at 82% 74%, rgba(71, 45, 23, 0.14), transparent 22%);
+  --panel-gloss:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 22%);
   --card-player-top: #ead8b4;
   --card-player-bottom: #ae8450;
   --card-enemy-top: #d3baa8;
@@ -116,6 +122,30 @@ body::before {
 body::after {
   opacity: 0.32;
   background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.26));
+}
+
+body.region-woodlands .battle-panel,
+body.region-woodlands .map-board {
+  box-shadow:
+    0 28px 68px rgba(0, 0, 0, 0.34),
+    0 0 120px rgba(125, 104, 54, 0.08),
+    inset 0 1px 0 rgba(255, 236, 198, 0.04);
+}
+
+body.region-wetlands .battle-panel,
+body.region-wetlands .map-board {
+  box-shadow:
+    0 28px 68px rgba(0, 0, 0, 0.34),
+    0 0 120px rgba(65, 117, 94, 0.08),
+    inset 0 1px 0 rgba(255, 236, 198, 0.04);
+}
+
+body.region-snowline .battle-panel,
+body.region-snowline .map-board {
+  box-shadow:
+    0 28px 68px rgba(0, 0, 0, 0.34),
+    0 0 120px rgba(117, 144, 180, 0.08),
+    inset 0 1px 0 rgba(255, 236, 198, 0.04);
 }
 
 button {
@@ -294,6 +324,7 @@ h3 {
   border: 1px solid rgba(239, 194, 122, 0.16);
   border-radius: 30px;
   background:
+    var(--panel-gloss),
     radial-gradient(circle at top center, rgba(217, 168, 86, 0.1), transparent 24%),
     radial-gradient(circle at bottom right, rgba(255, 238, 202, 0.03), transparent 18%),
     linear-gradient(180deg, rgba(33, 25, 20, 0.97), rgba(12, 10, 8, 0.98));
@@ -502,6 +533,7 @@ h3 {
   border: 1px solid rgba(255, 214, 143, 0.22);
   border-radius: 28px;
   background:
+    linear-gradient(90deg, rgba(14, 10, 8, 0.2), transparent 10%, transparent 90%, rgba(14, 10, 8, 0.22)),
     radial-gradient(circle at 50% 18%, rgba(255, 199, 110, 0.24), transparent 30%),
     radial-gradient(circle at 50% 48%, rgba(232, 149, 64, 0.18), transparent 42%),
     radial-gradient(circle at 12% 50%, rgba(22, 20, 18, 0.96), transparent 22%),
@@ -620,6 +652,7 @@ h3 {
   border-radius: 30px;
   border: 2px solid rgba(64, 40, 20, 0.92);
   background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 24%),
     radial-gradient(circle at 50% 40%, rgba(255, 230, 182, 0.26), transparent 38%),
     linear-gradient(180deg, var(--region-node-top), var(--region-node-bottom));
   box-shadow:
@@ -912,10 +945,13 @@ h3 {
   border: 1px solid rgba(239, 194, 122, 0.12);
   border-radius: 24px;
   background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 18%),
     radial-gradient(circle at top center, rgba(239, 194, 122, 0.06), transparent 38%),
     linear-gradient(180deg, rgba(29, 23, 18, 0.94), rgba(15, 12, 10, 0.96));
   min-width: 0;
-  box-shadow: inset 0 1px 0 rgba(255, 241, 210, 0.03);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 241, 210, 0.04),
+    inset 0 -18px 28px rgba(0, 0, 0, 0.08);
 }
 
 .queue-section {
@@ -963,8 +999,36 @@ h3 {
   color: #1d140d;
   text-align: left;
   border-radius: 18px;
-  box-shadow: inset 0 0 0 1px rgba(82, 49, 25, 0.7);
-  transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
+  box-shadow:
+    0 10px 18px rgba(0, 0, 0, 0.16),
+    inset 0 0 0 1px rgba(82, 49, 25, 0.7);
+  transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease, background 160ms ease;
+}
+
+.slot-card::before,
+.hand-card::before,
+.choice-card::before,
+.item-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--paper-grain);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.slot-card::after,
+.hand-card::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 9px;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(25, 15, 9, 0), rgba(25, 15, 9, 0.18));
+  pointer-events: none;
 }
 
 .slot-card,
@@ -981,6 +1045,7 @@ h3 {
   color: rgba(243, 230, 207, 0.84);
   background: var(--card-empty);
   box-shadow:
+    0 8px 14px rgba(0, 0, 0, 0.14),
     inset 0 0 0 1px rgba(215, 184, 125, 0.16),
     inset 0 0 0 8px rgba(255, 255, 255, 0.015);
 }
@@ -989,14 +1054,14 @@ h3 {
 .hand-card,
 .choice-card.card-choice {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 24%),
     linear-gradient(180deg, var(--card-player-top), var(--card-player-bottom));
   color: #20140d;
 }
 
 .slot-card.enemy {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 24%),
     linear-gradient(180deg, var(--card-enemy-top), var(--card-enemy-bottom));
   color: #1a100c;
 }
@@ -1018,10 +1083,10 @@ h3 {
 .primary-button:hover,
 .secondary-button:hover,
 .ghost-button:hover {
-  transform: translateY(-2px);
-  filter: brightness(1.03);
+  transform: translateY(-3px) scale(1.01);
+  filter: brightness(1.04);
   box-shadow:
-    0 14px 24px rgba(0, 0, 0, 0.28),
+    0 18px 30px rgba(0, 0, 0, 0.24),
     inset 0 0 0 1px rgba(82, 49, 25, 0.7);
 }
 
@@ -1057,7 +1122,7 @@ h3 {
 
 .slot-card.combat-attacker {
   box-shadow: 0 0 0 3px rgba(239, 194, 122, 0.92), inset 0 0 0 1px rgba(82, 49, 25, 0.7);
-  transform: translateY(-2px);
+  transform: translateY(-3px) scale(1.01);
 }
 
 .slot-card.combat-target,
@@ -1112,10 +1177,10 @@ h3 {
   display: block;
   min-width: 0;
   padding-right: 2px;
-  font-size: 0.94rem;
+  font-size: 0.96rem;
   line-height: 1.04;
   overflow-wrap: anywhere;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.16);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 .card-cost {
@@ -1171,6 +1236,12 @@ h3 {
   color: #f4e3c2;
   font: 700 0.7rem/1 "Franklin Gothic Medium", "Arial Narrow", "Trebuchet MS", sans-serif;
   text-align: center;
+  transition: transform 120ms ease, filter 120ms ease;
+}
+
+.sigil-badge:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
 }
 
 .lane-fx {
@@ -1425,7 +1496,9 @@ h3 {
   background:
     radial-gradient(circle at top right, rgba(202, 143, 59, 0.14), transparent 24%),
     linear-gradient(180deg, rgba(36, 28, 22, 0.98), rgba(15, 12, 10, 0.98));
-  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.5);
+  box-shadow:
+    0 34px 80px rgba(0, 0, 0, 0.54),
+    inset 0 1px 0 rgba(255, 237, 198, 0.05);
 }
 
 .choice-dialog {
@@ -1557,6 +1630,9 @@ h3 {
   border-radius: 16px;
   color: var(--ink);
   font-size: 0.88rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 24%),
+    linear-gradient(180deg, rgba(42, 33, 26, 0.92), rgba(18, 14, 11, 0.98));
 }
 
 .run-panel {
@@ -1722,16 +1798,23 @@ h3 {
   font: 700 0.9rem/1 "Franklin Gothic Medium", "Arial Narrow", "Trebuchet MS", sans-serif;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease, background 160ms ease;
 }
 
 .primary-button {
   color: #1d120d;
   background: linear-gradient(180deg, var(--accent-strong), var(--accent-deep));
+  box-shadow:
+    0 12px 20px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 243, 214, 0.38);
 }
 
 .secondary-button {
   color: #1d120d;
   background: linear-gradient(180deg, #f0d7a3, #ac7a3f);
+  box-shadow:
+    0 10px 18px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 244, 218, 0.28);
 }
 
 .ghost-button {
@@ -1844,7 +1927,7 @@ button:disabled {
 @keyframes lane-float {
   0% {
     opacity: 0;
-    transform: translateY(6px) scale(0.92);
+    transform: translateY(4px) scale(0.94);
   }
   18% {
     opacity: 1;
@@ -1852,7 +1935,7 @@ button:disabled {
   }
   100% {
     opacity: 0;
-    transform: translateY(-8px) scale(1.04);
+    transform: translateY(-30px) scale(1.06);
   }
 }
 
@@ -1863,7 +1946,7 @@ button:disabled {
   }
   35% {
     filter: brightness(1.18);
-    transform: scale(1.02);
+    transform: scale(1.03) translateY(-1px);
   }
   100% {
     filter: brightness(1);
@@ -1876,7 +1959,7 @@ button:disabled {
     transform: translateY(0);
   }
   50% {
-    transform: translateY(-4px);
+    transform: translateY(-5px) scale(1.02);
   }
   100% {
     transform: translateY(-2px);

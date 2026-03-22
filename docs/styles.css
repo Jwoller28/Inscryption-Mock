@@ -1996,6 +1996,11 @@ button:disabled {
     font-size: 0.78rem;
   }
 
+  .combat-tip {
+    flex: 0 1 auto;
+    width: 100%;
+  }
+
   .tutorial-grid {
     grid-template-columns: 1fr;
   }

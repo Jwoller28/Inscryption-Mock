@@ -1697,7 +1697,7 @@ function tickTurns(slots) {
       return;
     }
     card.turnsInPlay = (card.turnsInPlay || 0) + 1;
-    if (card.sigils.includes("Fledgling") && card.turnsInPlay >= 1) {
+    if (card.sigils.includes("Fledgling") && card.turnsInPlay >= 2) {
       evolveCard(slots, index);
     }
   });

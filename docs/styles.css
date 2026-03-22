@@ -156,9 +156,9 @@ h3 {
 
 .app-shell {
   position: relative;
-  width: min(1280px, 100%);
+  width: min(1500px, 100%);
   margin: 0 auto;
-  padding: calc(18px + env(safe-area-inset-top, 0px)) 16px calc(18px + env(safe-area-inset-bottom, 0px));
+  padding: calc(22px + env(safe-area-inset-top, 0px)) 20px calc(24px + env(safe-area-inset-bottom, 0px));
 }
 
 .topbar,
@@ -181,14 +181,17 @@ h3 {
 
 .topbar {
   position: relative;
-  margin-bottom: 14px;
-  padding: 18px 20px;
-  border: 1px solid var(--line);
-  border-radius: calc(var(--radius-panel) - 4px);
+  margin-bottom: 18px;
+  padding: 22px 24px;
+  border: 1px solid rgba(239, 194, 122, 0.18);
+  border-radius: 30px;
   background:
-    radial-gradient(circle at top right, rgba(217, 168, 86, 0.12), transparent 26%),
-    linear-gradient(180deg, rgba(40, 32, 26, 0.96), rgba(20, 16, 13, 0.94));
-  box-shadow: var(--shadow-lg);
+    radial-gradient(circle at top right, rgba(217, 168, 86, 0.18), transparent 24%),
+    radial-gradient(circle at 22% 20%, rgba(255, 234, 196, 0.05), transparent 18%),
+    linear-gradient(180deg, rgba(43, 33, 25, 0.96), rgba(18, 14, 11, 0.96));
+  box-shadow:
+    0 26px 60px rgba(0, 0, 0, 0.36),
+    inset 0 1px 0 rgba(255, 237, 199, 0.05);
 }
 
 .masthead-copy {
@@ -226,8 +229,10 @@ h3 {
 }
 
 .run-ribbon {
-  flex-wrap: wrap;
-  margin-bottom: 14px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
 }
 
 .banner-card,
@@ -247,11 +252,11 @@ h3 {
 .banner-card,
 .status-card {
   position: relative;
-  min-width: 120px;
+  min-width: 0;
   flex: 1 1 120px;
-  min-height: 66px;
-  padding: 10px 12px;
-  border-radius: 16px;
+  min-height: 72px;
+  padding: 12px 14px;
+  border-radius: 18px;
 }
 
 .banner-card strong,
@@ -272,7 +277,7 @@ h3 {
 
 .layout {
   align-items: flex-start;
-  gap: 14px;
+  gap: 20px;
 }
 
 .primary-panel {
@@ -281,28 +286,32 @@ h3 {
 }
 
 .side-panel {
-  width: min(320px, 100%);
+  width: min(286px, 100%);
   flex: 0 0 auto;
 }
 
 .panel {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-panel);
+  border: 1px solid rgba(239, 194, 122, 0.16);
+  border-radius: 30px;
   background:
-    radial-gradient(circle at top center, rgba(217, 168, 86, 0.08), transparent 28%),
-    linear-gradient(180deg, rgba(31, 25, 20, 0.96), rgba(14, 11, 9, 0.96));
-  box-shadow: var(--shadow-lg);
-  padding: 16px;
+    radial-gradient(circle at top center, rgba(217, 168, 86, 0.1), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(255, 238, 202, 0.03), transparent 18%),
+    linear-gradient(180deg, rgba(33, 25, 20, 0.97), rgba(12, 10, 8, 0.98));
+  box-shadow:
+    0 28px 68px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 236, 198, 0.04);
+  padding: 20px;
 }
 
 .battle-panel {
   overflow: hidden;
+  padding: 22px;
 }
 
 .battle-heading {
-  margin-bottom: 14px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(239, 194, 122, 0.14);
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(239, 194, 122, 0.12);
 }
 
 .battle-heading h2 {
@@ -350,13 +359,13 @@ h3 {
 
 .battle-view {
   display: grid;
-  gap: 12px;
+  gap: 14px;
   min-width: 0;
 }
 
 .map-view {
   display: grid;
-  gap: 12px;
+  gap: 16px;
 }
 
 .map-head,
@@ -414,12 +423,12 @@ h3 {
 
 .map-summary {
   flex-wrap: wrap;
-  padding: 12px 14px;
-  border: 1px solid rgba(255, 214, 143, 0.22);
-  border-radius: 18px;
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 214, 143, 0.18);
+  border-radius: 22px;
   background:
-    radial-gradient(circle at top right, rgba(255, 214, 143, 0.14), transparent 34%),
-    linear-gradient(180deg, rgba(44, 35, 27, 0.97), rgba(20, 17, 14, 0.98));
+    radial-gradient(circle at top right, rgba(255, 214, 143, 0.18), transparent 30%),
+    linear-gradient(180deg, rgba(48, 37, 28, 0.98), rgba(18, 15, 12, 0.98));
 }
 
 .map-summary strong,
@@ -480,25 +489,29 @@ h3 {
 }
 
 .map-scroll {
+  display: flex;
+  justify-content: center;
   overflow: visible;
   max-height: none;
-  padding-bottom: 0;
+  padding: 6px 0 4px;
 }
 
 .map-board {
   position: relative;
-  min-height: 760px;
+  min-height: 0;
   border: 1px solid rgba(255, 214, 143, 0.22);
   border-radius: 28px;
   background:
     radial-gradient(circle at 50% 18%, rgba(255, 199, 110, 0.24), transparent 30%),
-    radial-gradient(circle at 50% 50%, rgba(232, 149, 64, 0.22), transparent 40%),
+    radial-gradient(circle at 50% 48%, rgba(232, 149, 64, 0.18), transparent 42%),
     radial-gradient(circle at 12% 50%, rgba(22, 20, 18, 0.96), transparent 22%),
     radial-gradient(circle at 88% 46%, rgba(22, 20, 18, 0.96), transparent 22%),
+    linear-gradient(180deg, rgba(18, 13, 10, 0.26), rgba(18, 13, 10, 0.08)),
     linear-gradient(180deg, var(--region-board-top), rgba(75, 52, 31, 0.98) 24%, var(--region-board-mid) 52%, var(--region-board-bottom) 100%);
   box-shadow:
+    0 28px 50px rgba(0, 0, 0, 0.22),
     inset 0 0 0 1px rgba(255, 255, 255, 0.02),
-    inset 0 0 52px rgba(0, 0, 0, 0.14);
+    inset 0 0 60px rgba(0, 0, 0, 0.16);
 }
 
 .map-board::before,
@@ -599,12 +612,12 @@ h3 {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 78px;
-  height: 78px;
-  min-height: 78px;
-  padding: 8px;
+  width: 112px;
+  height: 96px;
+  min-height: 96px;
+  padding: 10px;
   color: var(--ink);
-  border-radius: 999px;
+  border-radius: 30px;
   border: 2px solid rgba(64, 40, 20, 0.92);
   background:
     radial-gradient(circle at 50% 40%, rgba(255, 230, 182, 0.26), transparent 38%),
@@ -692,7 +705,7 @@ h3 {
   max-width: 100%;
   padding: 0 4px;
   color: #130d09;
-  font: 700 0.82rem/1.05 "Franklin Gothic Medium", "Arial Narrow", "Trebuchet MS", sans-serif;
+  font: 700 0.9rem/1.05 "Franklin Gothic Medium", "Arial Narrow", "Trebuchet MS", sans-serif;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   text-align: center;
@@ -703,7 +716,7 @@ h3 {
 .map-node-region-tag {
   position: absolute;
   left: 50%;
-  bottom: -24px;
+  bottom: -26px;
   transform: translateX(-50%);
   padding: 3px 7px;
   border-radius: var(--radius-pill);
@@ -731,16 +744,22 @@ h3 {
 
 .combat-hud {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   min-height: 0;
 }
 
 .combat-rail {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   min-height: 0;
   flex-wrap: wrap;
+  padding: 12px 14px;
+  border-radius: 22px;
+  border: 1px solid rgba(239, 194, 122, 0.12);
+  background:
+    radial-gradient(circle at top left, rgba(255, 220, 155, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(39, 29, 22, 0.92), rgba(17, 14, 11, 0.95));
 }
 
 .phase-chip,
@@ -792,10 +811,10 @@ h3 {
 
 .combat-scale-card {
   position: relative;
-  min-width: 116px;
-  padding: 8px 10px;
+  min-width: 132px;
+  padding: 10px 12px;
   border: 1px solid rgba(239, 194, 122, 0.16);
-  border-radius: 16px;
+  border-radius: 18px;
   background:
     radial-gradient(circle at top right, rgba(239, 194, 122, 0.12), transparent 40%),
     linear-gradient(180deg, rgba(47, 31, 20, 0.92), rgba(20, 16, 13, 0.94));
@@ -843,8 +862,8 @@ h3 {
 }
 
 .tutorial-card {
-  padding: 10px 12px;
-  border-radius: 18px;
+  padding: 12px 14px;
+  border-radius: 20px;
 }
 
 .tutorial-card-slim .section-head {
@@ -889,31 +908,32 @@ h3 {
 }
 
 .board-section {
-  padding: 12px 12px 10px;
-  border: 1px solid var(--line);
-  border-radius: 22px;
+  padding: 14px 14px 12px;
+  border: 1px solid rgba(239, 194, 122, 0.12);
+  border-radius: 24px;
   background:
     radial-gradient(circle at top center, rgba(239, 194, 122, 0.06), transparent 38%),
     linear-gradient(180deg, rgba(29, 23, 18, 0.94), rgba(15, 12, 10, 0.96));
   min-width: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 241, 210, 0.03);
 }
 
 .queue-section {
   background:
-    radial-gradient(circle at top center, rgba(109, 124, 119, 0.1), transparent 36%),
-    linear-gradient(180deg, rgba(24, 22, 19, 0.95), rgba(13, 11, 10, 0.96));
+    radial-gradient(circle at top center, rgba(125, 168, 138, 0.12), transparent 36%),
+    linear-gradient(180deg, rgba(22, 26, 23, 0.96), rgba(12, 14, 12, 0.98));
 }
 
 .enemy-section {
   background:
-    radial-gradient(circle at top center, rgba(183, 100, 82, 0.12), transparent 34%),
-    linear-gradient(180deg, rgba(34, 24, 20, 0.96), rgba(15, 12, 10, 0.96));
+    radial-gradient(circle at top center, rgba(183, 100, 82, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(38, 24, 20, 0.97), rgba(17, 12, 10, 0.98));
 }
 
 .player-section {
   background:
-    radial-gradient(circle at top center, rgba(109, 155, 116, 0.12), transparent 34%),
-    linear-gradient(180deg, rgba(24, 25, 20, 0.96), rgba(14, 12, 10, 0.96));
+    radial-gradient(circle at top center, rgba(109, 155, 116, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(22, 28, 21, 0.97), rgba(12, 12, 10, 0.98));
 }
 
 .board-scroll {
@@ -928,8 +948,8 @@ h3 {
 .lane-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 10px;
+  gap: 12px;
+  margin-top: 12px;
   width: 100%;
   min-width: 0;
 }
@@ -949,8 +969,8 @@ h3 {
 
 .slot-card,
 .hand-card {
-  min-height: 112px;
-  font: 700 0.84rem/1.18 "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  min-height: 120px;
+  font: 700 0.86rem/1.18 "Palatino Linotype", "Book Antiqua", Georgia, serif;
 }
 
 .slot-card {
@@ -1250,23 +1270,26 @@ h3 {
 }
 
 .hand-panel {
-  padding: 14px 14px 12px;
+  padding: 16px 16px 14px;
   border: 1px solid var(--line-strong);
-  border-radius: 24px;
+  border-radius: 26px;
   background:
-    radial-gradient(circle at top center, rgba(239, 194, 122, 0.08), transparent 32%),
-    linear-gradient(180deg, rgba(43, 29, 17, 0.96), rgba(18, 14, 11, 0.98));
+    radial-gradient(circle at top center, rgba(239, 194, 122, 0.12), transparent 30%),
+    linear-gradient(180deg, rgba(50, 31, 18, 0.97), rgba(16, 12, 10, 0.99));
   min-width: 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 239, 205, 0.04),
+    0 18px 38px rgba(0, 0, 0, 0.16);
 }
 
 .hand-strip {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(150px, 180px);
-  gap: 12px;
+  grid-auto-columns: minmax(164px, 198px);
+  gap: 14px;
   width: 100%;
-  margin-top: 10px;
-  padding-bottom: 4px;
+  margin-top: 12px;
+  padding-bottom: 6px;
   overflow-x: auto;
   scrollbar-gutter: stable;
 }
@@ -1286,10 +1309,10 @@ h3 {
 
 .tray-controls {
   display: grid;
-  grid-template-columns: minmax(108px, 132px) minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: minmax(116px, 146px) minmax(0, 1fr);
+  gap: 12px;
   align-items: stretch;
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
 .tray-status-card {
@@ -1322,9 +1345,9 @@ h3 {
 
 .end-turn-button {
   width: 100%;
-  min-height: 64px;
-  border-radius: 18px;
-  font-size: 0.95rem;
+  min-height: 68px;
+  border-radius: 20px;
+  font-size: 1rem;
   letter-spacing: 0.16em;
   box-shadow:
     0 10px 24px rgba(0, 0, 0, 0.24),
@@ -1332,8 +1355,8 @@ h3 {
 }
 
 .tray-items {
-  margin-top: 10px;
-  padding-top: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
   border-top: 1px solid rgba(239, 194, 122, 0.12);
 }
 
@@ -1534,6 +1557,20 @@ h3 {
   border-radius: 16px;
   color: var(--ink);
   font-size: 0.88rem;
+}
+
+.run-panel {
+  position: sticky;
+  top: 18px;
+  padding: 16px 16px 18px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top center, rgba(255, 221, 163, 0.08), transparent 24%),
+    linear-gradient(180deg, rgba(25, 19, 15, 0.97), rgba(10, 9, 8, 0.99));
+}
+
+.run-panel h3 {
+  font-size: 0.95rem;
 }
 
 .side-panel-tabs {
@@ -1880,19 +1917,23 @@ button:disabled {
   .side-panel {
     width: 100%;
   }
+
+  .run-panel {
+    position: static;
+  }
 }
 
 @media (max-width: 720px) {
   .app-shell {
-    padding: calc(10px + env(safe-area-inset-top, 0px)) 10px calc(14px + env(safe-area-inset-bottom, 0px));
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 8px calc(10px + env(safe-area-inset-bottom, 0px));
   }
 
   .topbar {
     flex-direction: column;
     align-items: stretch;
-    gap: 12px;
-    padding: 14px;
-    border-radius: 22px;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 20px;
   }
 
   .topbar h1 {
@@ -1926,13 +1967,13 @@ button:disabled {
   }
 
   .panel {
-    padding: 12px;
+    padding: 10px;
     border-radius: 22px;
   }
 
   .battle-heading {
-    margin-bottom: 12px;
-    padding-bottom: 10px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
   }
 
   .battle-view {
@@ -1981,8 +2022,10 @@ button:disabled {
 
   .combat-rail {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 18px;
   }
 
   .combat-scale-card {
@@ -2015,7 +2058,7 @@ button:disabled {
   }
 
   .board-section {
-    padding: 10px 10px 8px;
+    padding: 9px 9px 8px;
     border-radius: 18px;
   }
 
@@ -2076,7 +2119,7 @@ button:disabled {
   }
 
   .hand-panel {
-    padding: 12px 10px 10px;
+    padding: 10px 10px 10px;
     border-radius: 20px;
   }
 
@@ -2086,9 +2129,9 @@ button:disabled {
   }
 
   .hand-strip {
-    grid-auto-columns: minmax(104px, 118px);
-    gap: 10px;
-    margin-top: 8px;
+    grid-auto-columns: minmax(96px, 108px);
+    gap: 8px;
+    margin-top: 6px;
   }
 
   .tray-controls,
@@ -2102,13 +2145,14 @@ button:disabled {
   }
 
   .tray-controls {
-    grid-template-columns: 96px minmax(0, 1fr);
+    grid-template-columns: 78px minmax(0, 1fr);
     gap: 8px;
   }
 
   .end-turn-button {
-    min-height: 56px;
-    padding: 10px 12px;
+    min-height: 50px;
+    padding: 8px 10px;
+    font-size: 0.82rem;
   }
 
   .tray-items {
@@ -2133,18 +2177,18 @@ button:disabled {
   }
 
   .side-panel {
-    margin-top: 2px;
+    margin-top: 0;
   }
 
   .side-panel-tabs {
     position: sticky;
-    top: 0;
-    z-index: 4;
+    bottom: 0;
+    z-index: 6;
     display: flex;
-    gap: 8px;
-    margin-bottom: 10px;
-    padding-top: 2px;
-    background: linear-gradient(180deg, rgba(14, 11, 9, 0.96), rgba(14, 11, 9, 0.84));
+    gap: 6px;
+    margin: 0 -2px 8px;
+    padding: 8px 2px calc(8px + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(180deg, rgba(14, 11, 9, 0.22), rgba(14, 11, 9, 0.96) 24%);
   }
 
   .info-panel {
@@ -2157,11 +2201,11 @@ button:disabled {
 
   .deck-panel,
   .log-panel {
-    max-height: 180px;
+    max-height: 148px;
   }
 
   .log-panel {
-    min-height: 120px;
+    min-height: 104px;
   }
 
   .choice-card {
@@ -2204,7 +2248,7 @@ button:disabled {
 @media (max-width: 720px) and (orientation: portrait) {
   .app-shell {
     width: 100%;
-    padding: calc(10px + env(safe-area-inset-top, 0px)) 10px calc(18px + env(safe-area-inset-bottom, 0px));
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 8px calc(12px + env(safe-area-inset-bottom, 0px));
   }
 
   .layout {
@@ -2212,17 +2256,17 @@ button:disabled {
   }
 
   .map-board {
-    min-height: 620px;
+    min-height: 720px;
   }
 
   .panel {
-    padding: 10px;
-    border-radius: 20px;
+    padding: 9px;
+    border-radius: 18px;
   }
 
   .battle-heading {
-    margin-bottom: 10px;
-    padding-bottom: 8px;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
   }
 
   .board-scroll {
@@ -2236,6 +2280,6 @@ button:disabled {
 
   .deck-panel,
   .log-panel {
-    max-height: 160px;
+    max-height: 132px;
   }
 }

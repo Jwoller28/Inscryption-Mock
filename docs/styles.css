@@ -26,6 +26,15 @@
   --card-enemy-top: #d3baa8;
   --card-enemy-bottom: #786458;
   --card-empty: linear-gradient(180deg, rgba(71, 66, 60, 0.72), rgba(46, 40, 36, 0.82));
+  --region-glow-a: rgba(150, 97, 45, 0.18);
+  --region-glow-b: rgba(91, 113, 89, 0.16);
+  --region-glow-c: rgba(93, 62, 33, 0.22);
+  --region-board-top: rgba(92, 64, 37, 0.98);
+  --region-board-mid: rgba(101, 69, 40, 0.98);
+  --region-board-bottom: rgba(69, 45, 27, 0.98);
+  --region-marker: rgba(255, 224, 176, 0.08);
+  --region-node-top: rgba(195, 150, 95, 0.99);
+  --region-node-bottom: rgba(124, 84, 50, 0.99);
 }
 
 * {
@@ -45,11 +54,47 @@ body {
   color: var(--ink);
   font-family: "Palatino Linotype", "Book Antiqua", Georgia, serif;
   background:
-    radial-gradient(circle at top left, rgba(150, 97, 45, 0.18), transparent 24%),
-    radial-gradient(circle at top right, rgba(91, 113, 89, 0.16), transparent 22%),
-    radial-gradient(circle at bottom center, rgba(93, 62, 33, 0.22), transparent 28%),
+    radial-gradient(circle at top left, var(--region-glow-a), transparent 24%),
+    radial-gradient(circle at top right, var(--region-glow-b), transparent 22%),
+    radial-gradient(circle at bottom center, var(--region-glow-c), transparent 28%),
     linear-gradient(180deg, #1a1511 0%, var(--bg) 42%, var(--bg-deep) 100%);
   overflow-x: hidden;
+}
+
+body.region-woodlands {
+  --region-glow-a: rgba(122, 88, 41, 0.22);
+  --region-glow-b: rgba(86, 117, 71, 0.2);
+  --region-glow-c: rgba(94, 67, 35, 0.24);
+  --region-board-top: rgba(87, 63, 36, 0.98);
+  --region-board-mid: rgba(91, 73, 42, 0.98);
+  --region-board-bottom: rgba(56, 42, 26, 0.99);
+  --region-marker: rgba(153, 181, 118, 0.09);
+  --region-node-top: rgba(168, 140, 90, 0.99);
+  --region-node-bottom: rgba(95, 79, 48, 0.99);
+}
+
+body.region-wetlands {
+  --region-glow-a: rgba(67, 89, 74, 0.22);
+  --region-glow-b: rgba(92, 122, 118, 0.18);
+  --region-glow-c: rgba(42, 67, 64, 0.24);
+  --region-board-top: rgba(47, 69, 63, 0.98);
+  --region-board-mid: rgba(63, 89, 79, 0.98);
+  --region-board-bottom: rgba(31, 46, 42, 0.99);
+  --region-marker: rgba(117, 166, 152, 0.1);
+  --region-node-top: rgba(114, 146, 132, 0.99);
+  --region-node-bottom: rgba(64, 92, 83, 0.99);
+}
+
+body.region-snowline {
+  --region-glow-a: rgba(110, 124, 150, 0.18);
+  --region-glow-b: rgba(160, 180, 196, 0.16);
+  --region-glow-c: rgba(88, 108, 136, 0.2);
+  --region-board-top: rgba(71, 82, 103, 0.98);
+  --region-board-mid: rgba(90, 102, 124, 0.98);
+  --region-board-bottom: rgba(43, 50, 66, 0.99);
+  --region-marker: rgba(177, 198, 225, 0.1);
+  --region-node-top: rgba(166, 182, 203, 0.99);
+  --region-node-bottom: rgba(88, 102, 126, 0.99);
 }
 
 body::before,
@@ -385,6 +430,48 @@ h3 {
   font-size: 1rem;
 }
 
+.map-summary-route {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+}
+
+.map-summary-label,
+.run-detail-label,
+.run-stat-label {
+  color: var(--muted);
+  font: 700 0.68rem/1 "Franklin Gothic Medium", "Arial Narrow", "Trebuchet MS", sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.map-summary-pills,
+.run-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.map-summary-pill,
+.run-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 6px 10px;
+  border-radius: var(--radius-pill);
+  color: var(--ink);
+  background: rgba(24, 20, 17, 0.82);
+  box-shadow: inset 0 0 0 1px rgba(255, 214, 143, 0.14);
+  font: 700 0.68rem/1 "Franklin Gothic Medium", "Arial Narrow", "Trebuchet MS", sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.map-summary-pill.quiet,
+.run-chip.quiet {
+  color: var(--muted);
+}
+
 .map-reset-button {
   margin-left: auto;
   align-self: center;
@@ -409,7 +496,7 @@ h3 {
     radial-gradient(circle at 50% 50%, rgba(232, 149, 64, 0.22), transparent 40%),
     radial-gradient(circle at 12% 50%, rgba(22, 20, 18, 0.96), transparent 22%),
     radial-gradient(circle at 88% 46%, rgba(22, 20, 18, 0.96), transparent 22%),
-    linear-gradient(180deg, rgba(92, 64, 37, 0.98), rgba(75, 52, 31, 0.98) 24%, rgba(101, 69, 40, 0.98) 52%, rgba(69, 45, 27, 0.98) 100%);
+    linear-gradient(180deg, var(--region-board-top), rgba(75, 52, 31, 0.98) 24%, var(--region-board-mid) 52%, var(--region-board-bottom) 100%);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.02),
     inset 0 0 52px rgba(0, 0, 0, 0.14);
@@ -483,7 +570,7 @@ h3 {
 .map-region-marker {
   border-radius: 26px;
   background:
-    linear-gradient(180deg, rgba(255, 224, 176, 0.08), transparent 26%),
+    linear-gradient(180deg, var(--region-marker), transparent 26%),
     linear-gradient(180deg, rgba(0, 0, 0, 0.04), transparent 22%, transparent 78%, rgba(0, 0, 0, 0.08));
   box-shadow: inset 0 0 0 1px rgba(255, 223, 173, 0.05);
 }
@@ -522,7 +609,7 @@ h3 {
   border: 2px solid rgba(64, 40, 20, 0.92);
   background:
     radial-gradient(circle at 50% 40%, rgba(255, 230, 182, 0.26), transparent 38%),
-    linear-gradient(180deg, rgba(195, 150, 95, 0.99), rgba(124, 84, 50, 0.99));
+    linear-gradient(180deg, var(--region-node-top), var(--region-node-bottom));
   box-shadow:
     0 12px 18px rgba(0, 0, 0, 0.2),
     inset 0 0 0 1px rgba(255, 248, 219, 0.14);
@@ -929,6 +1016,13 @@ h3 {
   box-shadow:
     0 0 0 3px rgba(129, 188, 139, 0.9),
     0 0 16px rgba(129, 188, 139, 0.16),
+    inset 0 0 0 1px rgba(82, 49, 25, 0.7);
+}
+
+.slot-card.enemy.targetable {
+  box-shadow:
+    0 0 0 3px rgba(183, 100, 82, 0.88),
+    0 0 18px rgba(183, 100, 82, 0.18),
     inset 0 0 0 1px rgba(82, 49, 25, 0.7);
 }
 
@@ -1488,6 +1582,14 @@ h3 {
   font: 700 0.88rem/1.2 "Palatino Linotype", "Book Antiqua", Georgia, serif;
 }
 
+.item-button.active {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 3px rgba(183, 100, 82, 0.72),
+    0 14px 24px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 1px rgba(255, 214, 143, 0.24);
+}
+
 .item-button-name,
 .item-button-copy {
   display: block;
@@ -1501,6 +1603,74 @@ h3 {
 .item-button-copy {
   color: var(--muted);
   font: 0.72rem/1.35 "Franklin Gothic Medium", "Arial Narrow", "Trebuchet MS", sans-serif;
+}
+
+#run-text {
+  margin-top: 10px;
+}
+
+.run-summary {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 214, 143, 0.16);
+  background:
+    radial-gradient(circle at top right, rgba(255, 214, 143, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(33, 27, 22, 0.98), rgba(15, 12, 10, 0.98));
+}
+
+.run-summary.region-woodlands {
+  background:
+    radial-gradient(circle at top right, rgba(133, 169, 104, 0.12), transparent 30%),
+    linear-gradient(180deg, rgba(34, 31, 24, 0.98), rgba(15, 13, 10, 0.98));
+}
+
+.run-summary.region-wetlands {
+  background:
+    radial-gradient(circle at top right, rgba(108, 160, 146, 0.14), transparent 30%),
+    linear-gradient(180deg, rgba(24, 34, 31, 0.98), rgba(11, 18, 16, 0.98));
+}
+
+.run-summary.region-snowline {
+  background:
+    radial-gradient(circle at top right, rgba(188, 208, 233, 0.14), transparent 30%),
+    linear-gradient(180deg, rgba(29, 34, 43, 0.98), rgba(13, 16, 22, 0.98));
+}
+
+.run-summary-hero {
+  display: grid;
+  gap: 4px;
+}
+
+.run-summary-hero strong,
+.run-stat strong {
+  color: var(--ink);
+}
+
+.run-summary-hero span,
+.run-detail-row span:last-child {
+  color: var(--muted-strong);
+}
+
+.run-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.run-stat {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(17, 14, 12, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(255, 214, 143, 0.08);
+}
+
+.run-detail-row {
+  display: grid;
+  gap: 6px;
 }
 
 .primary-button,

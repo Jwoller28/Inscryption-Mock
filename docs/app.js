@@ -87,6 +87,7 @@ const MAP_NODE_GLYPHS = {
   ECONOMY: "$"
 };
 const ITEM_DEFS = {
+  scissors: { id: "scissors", name: "Scissors", description: "Snip one creature from the enemy row." },
   pliers: { id: "pliers", name: "Pliers", description: "Deal 1 direct damage to the enemy scale." },
   squirrelBottle: { id: "squirrelBottle", name: "Squirrel Bottle", description: "Add a Squirrel to your hand." },
   hourglass: { id: "hourglass", name: "Hourglass", description: "Skip the next enemy attack phase." },
@@ -539,7 +540,8 @@ function createBattleState() {
 function createSelectionState() {
   return {
     selectedHandIndex: null,
-    selectedSacrificeIndexes: []
+    selectedSacrificeIndexes: [],
+    activeItemId: null
   };
 }
 
@@ -583,7 +585,7 @@ function getStarterUnlockLabel(key) {
 function getStarterItems(key) {
   const items = [copyItem(ITEM_DEFS.squirrelBottle)];
   if (key === "supply") {
-    items.push(copyItem(ITEM_DEFS.pliers));
+    items.push(copyItem(ITEM_DEFS.pliers), copyItem(ITEM_DEFS.scissors));
   }
   if (key === "ritual") {
     items.push(copyItem(ITEM_DEFS.blackGoatBottle));
@@ -1517,12 +1519,12 @@ function getBackpackEventConfig() {
 }
 
 function getRegionItemPool(region) {
-  const items = [ITEM_DEFS.squirrelBottle, ITEM_DEFS.pliers, ITEM_DEFS.hourglass, ITEM_DEFS.fan, ITEM_DEFS.boneJar, ITEM_DEFS.blackGoatBottle];
+  const items = [ITEM_DEFS.squirrelBottle, ITEM_DEFS.pliers, ITEM_DEFS.scissors, ITEM_DEFS.hourglass, ITEM_DEFS.fan, ITEM_DEFS.boneJar, ITEM_DEFS.blackGoatBottle];
   if (region === "Wetlands") {
-    return [ITEM_DEFS.hourglass, ITEM_DEFS.fan, ITEM_DEFS.boneJar, ITEM_DEFS.squirrelBottle, ITEM_DEFS.pliers];
+    return [ITEM_DEFS.hourglass, ITEM_DEFS.fan, ITEM_DEFS.scissors, ITEM_DEFS.boneJar, ITEM_DEFS.squirrelBottle, ITEM_DEFS.pliers];
   }
   if (region === "Snowline") {
-    return [ITEM_DEFS.pliers, ITEM_DEFS.blackGoatBottle, ITEM_DEFS.boneJar, ITEM_DEFS.hourglass, ITEM_DEFS.fan];
+    return [ITEM_DEFS.pliers, ITEM_DEFS.scissors, ITEM_DEFS.blackGoatBottle, ITEM_DEFS.boneJar, ITEM_DEFS.hourglass, ITEM_DEFS.fan];
   }
   return items;
 }
@@ -2337,7 +2339,20 @@ function useItem(itemId) {
     return;
   }
 
-  if (itemId === "pliers") {
+  if (itemId === "scissors") {
+    if (!state.battle.enemySlots.some(Boolean)) {
+      appendLog("No enemy creature is in range for the scissors.");
+      showTransientMessage("Scissors need a target on the enemy row.", "warning", 1100);
+      return;
+    }
+    state.selection.selectedHandIndex = null;
+    state.selection.selectedSacrificeIndexes = [];
+    state.selection.activeItemId = itemId;
+    appendLog("Scissors readied. Choose an enemy lane.");
+    setBattlePhase("Choose an enemy creature to cut down", "warning");
+    render();
+    return;
+  } else if (itemId === "pliers") {
     state.battle.playerDamage += 1;
     appendLog("You used the pliers on the scale.");
     showScaleEffect("+1", "player");
@@ -2366,6 +2381,31 @@ function useItem(itemId) {
   }
 
   state.items = state.items.filter((entry) => entry.id !== itemId);
+  state.selection.activeItemId = null;
+  if (!checkBattleEnd()) {
+    render();
+  }
+}
+
+function targetEnemyLaneForItem(index) {
+  if (uiState.turnAnimating || state.mode !== "battle") {
+    return;
+  }
+  if (state.selection.activeItemId !== "scissors") {
+    return;
+  }
+  const target = state.battle.enemySlots[index];
+  if (!target) {
+    appendLog("The scissors need a living target.");
+    showTransientMessage("Choose an occupied enemy lane.", "warning", 1000);
+    return;
+  }
+  const name = target.name;
+  removeDeadCard(state.battle.enemySlots, index, false, { kind: "item", itemId: "scissors", lane: index });
+  appendLog(`Scissors cut down ${name}.`);
+  showTransientMessage(`${name} was cut from the board.`, "success", 1100);
+  state.items = state.items.filter((entry) => entry.id !== "scissors");
+  state.selection.activeItemId = null;
   if (!checkBattleEnd()) {
     render();
   }
@@ -2379,6 +2419,7 @@ function selectHandCard(index) {
   if (uiState.turnAnimating) {
     return;
   }
+  state.selection.activeItemId = null;
   state.selection.selectedHandIndex = index;
   state.selection.selectedSacrificeIndexes = [];
   appendLog(`Selected ${state.battle.hand[index].name}.`);
@@ -3068,6 +3109,9 @@ function renderDrawModal() {
 
 function renderMeta() {
   const node = getCurrentNode();
+  const regionTheme = getRegionTheme(node?.region);
+  document.body.classList.remove("region-woodlands", "region-wetlands", "region-snowline", "region-run");
+  document.body.classList.add(`region-${regionTheme}`);
   refs.screenText.textContent = state.currentScreen || "Battle";
   refs.regionText.textContent = node ? node.region : "Run";
   refs.progressText.textContent = getProgressDisplay(node);
@@ -3121,7 +3165,7 @@ function renderBattle() {
 
   refs.scaleText.textContent = `${state.battle.playerDamage} | ${state.battle.enemyDamage}`;
   refs.bonesText.textContent = String(state.battle.playerBones);
-  refs.selectionText.textContent = getSelectedHandCard() ? getSelectedHandCard().name : "None";
+  refs.selectionText.textContent = getSelectionLabel();
   refs.itemCountText.textContent = String(state.items.length);
   refs.queueCaption.textContent = state.battle.skipEnemyAttackPhase
     ? "Enemy attack is skipped next turn"
@@ -3132,7 +3176,7 @@ function renderBattle() {
   renderTutorialPanel();
 
   renderLane(refs.enemyQueue, state.battle.enemyQueue, "enemy", null);
-  renderLane(refs.enemyBoard, state.battle.enemySlots, "enemy", null);
+  renderLane(refs.enemyBoard, state.battle.enemySlots, "enemy", state.selection.activeItemId === "scissors" ? targetEnemyLaneForItem : null);
   renderLane(refs.playerBoard, state.battle.playerSlots, "player", onPlayerSlotClick);
   renderHand();
   renderItems();
@@ -3184,8 +3228,11 @@ function renderMapSummary(currentNode, reachablePositions) {
   }
 
   const currentLabel = getNodeDisplayName(currentNode.type);
+  const nextStops = choices.length
+    ? choices.map((node) => `<span class="map-summary-pill">${escapeHtml(`${node.regionPosition + 1}. ${getNodeDisplayName(node.type)}`)}</span>`).join("")
+    : `<span class="map-summary-pill quiet">Route complete</span>`;
   refs.mapSummary.innerHTML = choices.length
-    ? `<strong>${escapeHtml(`${currentNode.region} ${currentLabel}`)}</strong><span class="choice-copy">Follow one highlighted trail upward. Routes stay visible several stops ahead so tradeoffs are readable before you commit.</span>`
+    ? `<strong>${escapeHtml(`${currentNode.region} ${currentLabel}`)}</strong><span class="choice-copy">Follow one highlighted trail upward. Routes stay visible several stops ahead so tradeoffs are readable before you commit.</span><div class="map-summary-route"><span class="map-summary-label">Next stops</span><div class="map-summary-pills">${nextStops}</div></div>`
     : `<strong>${escapeHtml(`${currentNode.region} ${currentLabel}`)}</strong><span class="choice-copy">No further paths remain in this run.</span>`;
 
   refs.mapLegend.innerHTML = [
@@ -3223,7 +3270,7 @@ function renderMapRegions(metrics) {
     const topY = getMapNodePoint({ column: maxColumn, lane: 0 }, metrics).y - MAP_NODE_HEIGHT / 2 - 34;
     const bottomY = getMapNodePoint({ column: minColumn, lane: 0 }, metrics).y + MAP_NODE_HEIGHT / 2 + 18;
     const marker = document.createElement("div");
-    marker.className = "map-region-marker";
+    marker.className = `map-region-marker region-${getRegionTheme(region)}`;
     marker.style.top = `${topY}px`;
     marker.style.left = "12px";
     marker.style.right = "12px";
@@ -3298,6 +3345,7 @@ function renderMapNodes(currentNode, reachablePositions, metrics) {
 function getMapNodeClasses(node, currentNode, reachablePositions) {
   const classes = ["map-node"];
   classes.push(`type-${node.type.toLowerCase()}`);
+  classes.push(`region-${getRegionTheme(node.region)}`);
   if (node.completed) {
     classes.push("completed");
   } else if (node.visited) {
@@ -3864,6 +3912,9 @@ function renderItems() {
   state.items.forEach((item) => {
     const button = document.createElement("button");
     button.className = "item-button";
+    if (state.selection.activeItemId === item.id) {
+      button.classList.add("active");
+    }
     button.innerHTML = `<span class="item-button-name">${escapeHtml(item.name)}</span><span class="item-button-copy">${escapeHtml(item.description)}</span>`;
     button.addEventListener("click", () => useItem(item.id));
     refs.itemBar.appendChild(button);
@@ -4108,13 +4159,87 @@ function getNodeSummary(type, region = "") {
 function renderRunInfo() {
   const bossText = state.mode === "battle" && state.battle.bossType ? ` | Boss phase ${state.battle.bossPhase}` : "";
   const encounter = getEncounterIdentityText();
+  const node = getCurrentNode();
+  const nextNodes = getAvailableMapChoices(node);
+  const deckStats = summarizeDeck(state.currentDeck);
+  const routeMarkup = nextNodes.length
+    ? nextNodes.map((entry) => `<span class="run-chip">${escapeHtml(getNodeDisplayName(entry.type))}</span>`).join("")
+    : `<span class="run-chip quiet">Awaiting outcome</span>`;
   refs.runText.innerHTML = `
-    <strong>${escapeHtml(`Round ${state.currentRound} | Battles won ${state.battlesWon}`)}</strong><br>
-    ${escapeHtml(`Deck size ${state.currentDeck.length} | Items ${state.items.length}${bossText}`)}<br>
-    ${escapeHtml(`Starter boon ${getStarterUnlockLabel(state.meta?.activeStarterKey || "classic")} | Unlocked ${state.meta?.unlockedStarterKeys?.length || 1}`)}<br>
-    ${escapeHtml(`Bosses cleared ${state.meta?.completedBosses || 0} | Runs cleared ${state.meta?.completedRuns || 0}`)}<br>
-    ${escapeHtml(encounter.long || "Continue the run.")}
+    <div class="run-summary region-${getRegionTheme(node?.region)}">
+      <div class="run-summary-hero">
+        <strong>${escapeHtml(`${node?.region || "Run"} | ${state.currentScreen || "Battle"}`)}</strong>
+        <span>${escapeHtml(`Round ${state.currentRound} | Battles won ${state.battlesWon}${bossText}`)}</span>
+      </div>
+      <div class="run-stat-grid">
+        <div class="run-stat"><span class="run-stat-label">Node</span><strong>${escapeHtml(node ? `${node.regionPosition + 1} / ${getRegionLength(node.region)}` : "Start")}</strong></div>
+        <div class="run-stat"><span class="run-stat-label">Deck</span><strong>${escapeHtml(String(state.currentDeck.length))}</strong></div>
+        <div class="run-stat"><span class="run-stat-label">Items</span><strong>${escapeHtml(String(state.items.length))}</strong></div>
+        <div class="run-stat"><span class="run-stat-label">Damage</span><strong>${escapeHtml(`${state.cumulativeDamageDealt} dealt | ${state.cumulativeDamageReceived} taken`)}</strong></div>
+      </div>
+      <div class="run-detail-row">
+        <span class="run-detail-label">Route ahead</span>
+        <div class="run-chip-row">${routeMarkup}</div>
+      </div>
+      <div class="run-detail-row">
+        <span class="run-detail-label">Deck makeup</span>
+        <div class="run-chip-row">
+          <span class="run-chip">${escapeHtml(`${deckStats.blood} blood`)}</span>
+          <span class="run-chip">${escapeHtml(`${deckStats.bones} bones`)}</span>
+          <span class="run-chip">${escapeHtml(`${deckStats.sigils} sigils`)}</span>
+          <span class="run-chip">${escapeHtml(`${deckStats.rareOrBetter} rare+`)}</span>
+        </div>
+      </div>
+      <div class="run-detail-row">
+        <span class="run-detail-label">Starter boon</span>
+        <span>${escapeHtml(`${getStarterUnlockLabel(state.meta?.activeStarterKey || "classic")} | ${encounter.long || "Continue the run."}`)}</span>
+      </div>
+      <div class="run-detail-row">
+        <span class="run-detail-label">Meta progress</span>
+        <span>${escapeHtml(`Unlocked ${state.meta?.unlockedStarterKeys?.length || 1} | Bosses cleared ${state.meta?.completedBosses || 0} | Runs cleared ${state.meta?.completedRuns || 0}`)}</span>
+      </div>
+    </div>
   `;
+}
+
+function getSelectionLabel() {
+  if (state.selection.activeItemId) {
+    return ITEM_DEFS[state.selection.activeItemId]?.name || "Item";
+  }
+  const selected = getSelectedHandCard();
+  return selected ? selected.name : "None";
+}
+
+function summarizeDeck(deck) {
+  return deck.reduce((summary, card) => {
+    if (card.costType === "bones") {
+      summary.bones += 1;
+    } else {
+      summary.blood += 1;
+    }
+    summary.sigils += Array.isArray(card.sigils) ? card.sigils.length : 0;
+    if (card.cost >= 2 || (Array.isArray(card.sigils) && card.sigils.length >= 2) || card.attack >= 3 || card.health >= 5) {
+      summary.rareOrBetter += 1;
+    }
+    return summary;
+  }, { blood: 0, bones: 0, sigils: 0, rareOrBetter: 0 });
+}
+
+function getRegionLength(region) {
+  return state.map.filter((node) => node.region === region).length || 0;
+}
+
+function getRegionTheme(region) {
+  if (region === "Wetlands") {
+    return "wetlands";
+  }
+  if (region === "Snowline") {
+    return "snowline";
+  }
+  if (region === "Woodlands") {
+    return "woodlands";
+  }
+  return "run";
 }
 
 function renderDeck() {

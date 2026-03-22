@@ -1931,6 +1931,8 @@ button:disabled {
   }
 
   .battle-view {
+    display: flex;
+    flex-direction: column;
     gap: 10px;
   }
 
@@ -1967,6 +1969,8 @@ button:disabled {
   }
 
   .combat-hud {
+    display: flex;
+    flex-direction: column;
     gap: 6px;
   }
 

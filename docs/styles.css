@@ -351,6 +351,7 @@ h3 {
 .battle-view {
   display: grid;
   gap: 12px;
+  min-width: 0;
 }
 
 .map-view {
@@ -1255,6 +1256,7 @@ h3 {
   background:
     radial-gradient(circle at top center, rgba(239, 194, 122, 0.08), transparent 32%),
     linear-gradient(180deg, rgba(43, 29, 17, 0.96), rgba(18, 14, 11, 0.98));
+  min-width: 0;
 }
 
 .hand-strip {
@@ -2226,11 +2228,10 @@ button:disabled {
   .board-scroll {
     margin: 0 -2px;
     padding: 0 2px 6px;
-    overflow-x: hidden;
   }
 
   .lane-grid {
-    min-width: 0;
+    min-width: 354px;
   }
 
   .deck-panel,

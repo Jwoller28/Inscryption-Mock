@@ -478,12 +478,9 @@ h3 {
 }
 
 .map-scroll {
-  overflow-x: hidden;
-  overflow-y: auto;
-  max-height: min(68vh, 780px);
-  padding-bottom: 6px;
-  scrollbar-width: thin;
-  scrollbar-gutter: stable;
+  overflow: visible;
+  max-height: none;
+  padding-bottom: 0;
 }
 
 .map-board {
@@ -2169,7 +2166,7 @@ button:disabled {
   }
 
   .map-scroll {
-    max-height: min(62vh, 620px);
+    max-height: none;
   }
 
   .sigil-dialog,

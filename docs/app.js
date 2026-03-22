@@ -3192,7 +3192,8 @@ function renderMapView() {
   normalizeMapLayout(state.map);
   const currentNode = getCurrentNode();
   const reachablePositions = new Set(getAvailableMapChoices(currentNode).map((node) => node.position));
-  const metrics = getMapMetrics();
+  const mapWindow = getVisibleMapWindow(currentNode);
+  const metrics = getMapMetrics(mapWindow.nodes);
   const boardWidth = metrics.width;
   const boardHeight = metrics.height;
 
@@ -3205,11 +3206,10 @@ function renderMapView() {
   refs.mapRegions.innerHTML = "";
   refs.mapNodes.innerHTML = "";
 
-  renderMapRegions(metrics);
-  renderMapConnections(currentNode, reachablePositions, metrics);
-  renderMapNodes(currentNode, reachablePositions, metrics);
+  renderMapRegions(mapWindow.nodes, metrics);
+  renderMapConnections(mapWindow.nodes, currentNode, reachablePositions, metrics);
+  renderMapNodes(mapWindow.nodes, currentNode, reachablePositions, metrics);
   renderMapSummary(currentNode, reachablePositions);
-  syncMapViewport(currentNode, metrics);
 }
 
 function renderMapSummary(currentNode, reachablePositions) {
@@ -3252,16 +3252,16 @@ function renderMapSummary(currentNode, reachablePositions) {
   }
 }
 
-function getMapMetrics() {
-  const maxColumn = state.map.reduce((max, node) => Math.max(max, node.column || 0), 0);
+function getMapMetrics(nodes = state.map) {
+  const maxColumn = nodes.reduce((max, node) => Math.max(max, node.column || 0), 0);
   const width = MAP_PADDING_X * 2 + (MAP_LANE_COUNT - 1) * MAP_LANE_SPACING + MAP_NODE_WIDTH;
   const height = MAP_PADDING_Y * 2 + maxColumn * MAP_COLUMN_SPACING + MAP_NODE_HEIGHT;
   return { width, height, maxColumn };
 }
 
-function renderMapRegions(metrics) {
+function renderMapRegions(nodes, metrics) {
   REGIONS.forEach((region) => {
-    const regionNodes = state.map.filter((node) => node.region === region);
+    const regionNodes = nodes.filter((node) => node.region === region);
     if (!regionNodes.length) {
       return;
     }
@@ -3289,10 +3289,14 @@ function renderMapRegions(metrics) {
   });
 }
 
-function renderMapConnections(currentNode, reachablePositions, metrics) {
-  state.map.forEach((node) => {
+function renderMapConnections(nodes, currentNode, reachablePositions, metrics) {
+  const visiblePositions = new Set(nodes.map((node) => node.position));
+  nodes.forEach((node) => {
     node.nextChoices.forEach((nextPosition) => {
-      const target = findNodeByIndex(nextPosition);
+      if (!visiblePositions.has(nextPosition)) {
+        return;
+      }
+      const target = nodes.find((entry) => entry.position === nextPosition);
       if (!target) {
         return;
       }
@@ -3319,8 +3323,8 @@ function getMapLinkClass(node, target, currentNode, reachablePositions) {
   return classes.join(" ");
 }
 
-function renderMapNodes(currentNode, reachablePositions, metrics) {
-  state.map.forEach((node) => {
+function renderMapNodes(nodes, currentNode, reachablePositions, metrics) {
+  nodes.forEach((node) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = getMapNodeClasses(node, currentNode, reachablePositions);
@@ -3376,6 +3380,57 @@ function getMapNodePoint(node, metrics = getMapMetrics(), edge = "center") {
   return { x: centerX, y: centerY };
 }
 
+function getVisibleMapWindow(currentNode = getCurrentNode(), depth = 3) {
+  if (!state.map.length) {
+    return { nodes: [] };
+  }
+
+  const byPosition = new Map(state.map.map((node) => [node.position, node]));
+  const visiblePositions = new Set();
+  const queue = [];
+
+  if (currentNode) {
+    visiblePositions.add(currentNode.position);
+    queue.push({ node: currentNode, distance: 0 });
+  } else {
+    const firstNode = state.map[0];
+    if (firstNode) {
+      visiblePositions.add(firstNode.position);
+      queue.push({ node: firstNode, distance: 0 });
+    }
+  }
+
+  while (queue.length) {
+    const { node, distance } = queue.shift();
+    if (!node || distance >= depth) {
+      continue;
+    }
+    node.nextChoices.forEach((nextPosition) => {
+      if (visiblePositions.has(nextPosition)) {
+        return;
+      }
+      const nextNode = byPosition.get(nextPosition);
+      if (!nextNode) {
+        return;
+      }
+      visiblePositions.add(nextPosition);
+      queue.push({ node: nextNode, distance: distance + 1 });
+    });
+  }
+
+  const visibleNodes = state.map
+    .filter((node) => visiblePositions.has(node.position))
+    .sort((a, b) => (a.column - b.column) || (a.lane - b.lane));
+
+  const minColumn = visibleNodes.reduce((min, node) => Math.min(min, node.column || 0), visibleNodes[0]?.column || 0);
+  const nodes = visibleNodes.map((node) => ({
+    ...node,
+    column: (node.column || 0) - minColumn
+  }));
+
+  return { nodes };
+}
+
 function getMapLaneDrift(node) {
   const seed = ((node.position || 0) * 17 + (node.column || 0) * 13 + (node.lane || 0) * 7) % 5;
   return (seed - 2) * 8;
@@ -3387,22 +3442,6 @@ function getMapNodeShortLabel(type) {
   if (type === "WOODCARVER") return "Totem";
   if (type === "MYCOLOGISTS") return "Merge";
   return getNodeDisplayName(type).replace(" Battle", "");
-}
-
-function syncMapViewport(currentNode, metrics = getMapMetrics()) {
-  if (!currentNode || !refs.mapScroll) {
-    return;
-  }
-  const focusKey = `${state.currentNodeIndex}:${state.mode}`;
-  if (uiState.mapFocusKey === focusKey) {
-    return;
-  }
-  uiState.mapFocusKey = focusKey;
-  window.requestAnimationFrame(() => {
-    const point = getMapNodePoint(currentNode, metrics);
-    const targetTop = Math.max(0, point.y - refs.mapScroll.clientHeight * 0.72);
-    refs.mapScroll.scrollTo({ top: targetTop, behavior: "auto" });
-  });
 }
 
 function renderCombatHud() {

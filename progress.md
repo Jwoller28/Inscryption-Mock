@@ -4,6 +4,7 @@ Original prompt: There are 2 big issues but ill let you decide how / the order w
 - Tightened portrait battle layout sizing in `docs/styles.css` so the board rows size to the viewport/container instead of being stretched by internal content width.
 - Added unique-offer reward selection in `docs/app.js` so a single reward/trader choice set will not show the same card name twice.
 - Updated `docs/app.js` so any creature death grants bones, not just allied deaths.
+- Updated `docs/app.js` so player overkill damage now carries from the front enemy into the queued enemy in the same lane, and only reaches the scale when both are cleared.
 - TODO: Verify on a portrait/mobile viewport that board rows no longer shift horizontally while hand size changes.
 - TODO: Verify in battle that Wolf Cub attacks as Wolf Cub on the first end turn and only evolves at the start of its next active turn.
 - TODO: Verify reward and trader screens no longer surface duplicate card names in the same offer set.

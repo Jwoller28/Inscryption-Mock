@@ -1831,18 +1831,16 @@ async function singleStrike(attackingRow, defendingRow, attackerLane, targetLane
   }
 
   if (!defender || repulsive || waterborne || (airborne && !blockedByLeap)) {
-    if (isPlayer) {
-      state.battle.playerDamage += attackPower;
-      appendLog(`${attacker.name} struck the scale for ${attackPower}.`);
-      noteTurnDirectDamage(true, attackPower);
-      showScaleEffect(`+${attackPower}`, "player");
-    } else {
-      state.battle.enemyDamage += attackPower;
-      appendLog(`${attacker.name} dealt ${attackPower} direct damage.`);
-      noteTurnDirectDamage(false, attackPower);
-      showScaleEffect(`-${attackPower}`, "enemy");
+    let remainingDamage = attackPower;
+    if (attackingRow[attackerLane]) {
+      remainingDamage = dealQueuedOverkillDamage(attackingRow, attackerLane, targetLane, attackPower, isPlayer);
     }
-    queueLaneEffect(isPlayer ? "player" : "enemy", attackerLane, `${attackPower}`, "direct");
+    if (remainingDamage <= 0 || !attackingRow[attackerLane]) {
+      await pauseBattleAction();
+      return;
+    }
+    applyDirectDamage(remainingDamage, isPlayer, attacker.name);
+    queueLaneEffect(isPlayer ? "player" : "enemy", attackerLane, `${remainingDamage}`, "direct");
     if (defender && repulsive) {
       queueLaneEffect(isPlayer ? "player" : "enemy", attackerLane, "Repelled", "block");
     } else if (defender && waterborne) {
@@ -1854,7 +1852,14 @@ async function singleStrike(attackingRow, defendingRow, attackerLane, targetLane
     return;
   }
 
-  dealCombatDamage(attackingRow, defendingRow, attackerLane, defenderLane, attackPower, isPlayer);
+  let remainingDamage = dealCombatDamage(attackingRow, defendingRow, attackerLane, defenderLane, attackPower, isPlayer);
+  if (remainingDamage > 0 && attackingRow[attackerLane]) {
+    remainingDamage = dealQueuedOverkillDamage(attackingRow, attackerLane, targetLane, remainingDamage, isPlayer);
+  }
+  if (remainingDamage > 0 && attackingRow[attackerLane]) {
+    applyDirectDamage(remainingDamage, isPlayer, attacker.name);
+    queueLaneEffect(isPlayer ? "player" : "enemy", attackerLane, `${remainingDamage}`, "direct");
+  }
   await pauseBattleAction();
 }
 
@@ -1910,13 +1915,40 @@ function getAttackPower(attacker, attackingRow, attackerLane, defendingRow, targ
   return Math.max(power, 0);
 }
 
+function applyDirectDamage(amount, isPlayer, attackerName) {
+  if (isPlayer) {
+    state.battle.playerDamage += amount;
+    appendLog(`${attackerName} struck the scale for ${amount}.`);
+    noteTurnDirectDamage(true, amount);
+    showScaleEffect(`+${amount}`, "player");
+  } else {
+    state.battle.enemyDamage += amount;
+    appendLog(`${attackerName} dealt ${amount} direct damage.`);
+    noteTurnDirectDamage(false, amount);
+    showScaleEffect(`-${amount}`, "enemy");
+  }
+}
+
+function dealQueuedOverkillDamage(attackingRow, attackerLane, targetLane, attackPower, isPlayer) {
+  if (!isPlayer) {
+    return attackPower;
+  }
+  const queuedDefender = state.battle.enemyQueue[targetLane];
+  if (!queuedDefender) {
+    return attackPower;
+  }
+  appendLog(`${attackingRow[attackerLane].name} struck the queued ${queuedDefender.name}.`);
+  return dealCombatDamage(attackingRow, state.battle.enemyQueue, attackerLane, targetLane, attackPower, isPlayer);
+}
+
 function dealCombatDamage(attackingRow, defendingRow, attackerLane, defenderLane, attackPower, isPlayer) {
   const attacker = attackingRow[attackerLane];
   const defender = defendingRow[defenderLane];
   if (!defender) {
-    return;
+    return attackPower;
   }
 
+  const defenderHealthBeforeHit = defender.health;
   const lethal = attacker.sigils.includes("Touch of Death");
   defender.health = lethal ? 0 : defender.health - attackPower;
   appendLog(`${attacker.name} hit ${defender.name} for ${lethal ? "lethal" : attackPower}.`);
@@ -1939,7 +1971,10 @@ function dealCombatDamage(attackingRow, defendingRow, attackerLane, defenderLane
 
   if (defender.health <= 0) {
     removeDeadCard(defendingRow, defenderLane, !isPlayer, { kind: "combat", lane: defenderLane, attacker });
+    return Math.max(attackPower - defenderHealthBeforeHit, 0);
   }
+
+  return 0;
 }
 
 function removeDeadCard(row, lane, belongsToPlayer, cause = { kind: "combat", lane }) {

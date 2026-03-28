@@ -25,5 +25,9 @@ bin/
 ### VS Code ###
 .vscode/
 
+### Local tooling ###
+scripts/local/
+tempbuild/
+
 ### Mac OS ###
 .DS_Store

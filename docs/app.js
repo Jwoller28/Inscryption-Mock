@@ -121,9 +121,13 @@ const SIGIL_STONE_POOL = [
   "Worthy Sacrifice"
 ];
 
+const CARD_ART_BY_NAME = {
+  Toad: "assets/Toad.png"
+};
+
 const STARTER_DECK = [
   createCard("Stoat", 1, 3, 1, "blood", ["Double Strike"]),
-  createCard("Bullfrog", 1, 2, 1, "blood", ["Mighty Leap"]),
+  createCard("Toad", 1, 2, 1, "blood", ["Mighty Leap"]),
   createCard("Adder", 1, 1, 1, "blood", ["Touch of Death"]),
   createCard("Wolf Cub", 1, 1, 1, "blood", ["Fledgling"]),
   createCard("Coyote", 2, 1, 4, "bones", []),
@@ -567,6 +571,15 @@ function copyCard(card) {
 
 function copyItem(itemDef) {
   return { id: itemDef.id, name: itemDef.name, description: itemDef.description };
+}
+
+function prioritizeCard(cards, cardName) {
+  const cardIndex = cards.findIndex((card) => card.name === cardName);
+  if (cardIndex > 0) {
+    const [card] = cards.splice(cardIndex, 1);
+    cards.unshift(card);
+  }
+  return cards;
 }
 
 function buildStarterDeck() {
@@ -1163,7 +1176,7 @@ function startBattle(node) {
   state.battle.encounterDescription = encounterProfile.summary;
   state.battle.queueOrder = encounterProfile.laneOrder || null;
   state.battle.hand = [createLibraryCard("squirrel")];
-  state.battle.playerDeck = shuffle(state.currentDeck.map(copyCard));
+  state.battle.playerDeck = prioritizeCard(shuffle(state.currentDeck.map(copyCard)), "Toad");
   state.battle.enemyDeck = shuffle(encounterProfile.deck.map(copyCard));
   state.battle.enemySlots = normalizeEncounterRow(encounterProfile.openingBoard);
   state.battle.enemyQueue = normalizeEncounterRow(encounterProfile.openingQueue);
@@ -4434,13 +4447,17 @@ async function pauseBattleAction(delay = 360) {
 }
 
 function formatCardMarkup(card) {
+  const artPath = CARD_ART_BY_NAME[card.name];
   const sigilMarkup = card.sigils.length
     ? `<span class="card-sigil-row">${card.sigils.map((sigil) => `<span class="sigil-badge" data-sigil="${escapeHtml(sigil)}" title="${escapeHtml(sigil)}">${escapeHtml(getSigilIcon(sigil))}</span>`).join("")}</span>`
     : "";
+  const artMarkup = artPath
+    ? `<span class="card-art-frame"><img class="card-art-image" src="${escapeHtml(artPath)}" alt="${escapeHtml(card.name)} art"></span>`
+    : "";
   return [
     `<span class="card-header"><span class="card-name">${escapeHtml(card.name)}</span><span class="card-cost">${escapeHtml(getCostShortLabel(card))}</span></span>`,
-    `<span class="card-stats">A${card.attack} H${card.health}</span>`,
-    sigilMarkup
+    artMarkup,
+    `<span class="card-footer"><span class="card-stat-chip attack">A${card.attack}</span>${sigilMarkup}<span class="card-stat-chip health">H${card.health}</span></span>`
   ].join("");
 }
 

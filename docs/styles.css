@@ -1205,7 +1205,7 @@ h3 {
 .choice-card.card-choice {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .card-art-frame {
@@ -1213,12 +1213,65 @@ h3 {
   display: flex;
   align-items: center;
   justify-content: center;
-  aspect-ratio: 1 / 1;
-  min-height: 0;
-  overflow: visible;
-  padding: 2px 0;
-  background: transparent;
-  box-shadow: none;
+  flex: 1 1 auto;
+  min-height: 72px;
+  overflow: hidden;
+  padding: 7px 6px 30px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 50% 32%, rgba(255, 246, 225, 0.52), rgba(224, 188, 128, 0.18) 44%, rgba(120, 83, 44, 0.06) 72%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(115, 82, 49, 0.08));
+  box-shadow:
+    inset 0 0 0 1px rgba(98, 63, 36, 0.24),
+    inset 0 -10px 16px rgba(74, 49, 29, 0.08);
+}
+
+.card-art-frame::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 13px;
+  border: 1px solid rgba(110, 74, 44, 0.18);
+  pointer-events: none;
+}
+
+.card-art-stage {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.card-art-stage::before {
+  content: "";
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: 8%;
+  bottom: 12%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(115, 79, 46, 0.2), rgba(115, 79, 46, 0.08) 42%, rgba(115, 79, 46, 0) 72%);
+  pointer-events: none;
+}
+
+.card-art-stage::after {
+  content: "";
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  bottom: 8px;
+  height: 14px;
+  border-radius: 999px;
+  background: radial-gradient(circle at center, rgba(74, 51, 31, 0.3), rgba(74, 51, 31, 0));
+  pointer-events: none;
+}
+
+.card-art-stage-empty::before,
+.card-art-stage-empty::after {
+  display: none;
 }
 
 .card-art-image {
@@ -1226,16 +1279,26 @@ h3 {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  object-position: center center;
-  filter: drop-shadow(0 3px 5px rgba(20, 12, 8, 0.28));
+  object-position: center 72%;
+  transform: scale(1.16);
+  filter: drop-shadow(0 4px 7px rgba(20, 12, 8, 0.34));
 }
 
 .card-footer {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 6px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 6px;
   align-items: center;
-  margin-top: auto;
+  padding: 3px 4px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(242, 224, 189, 0.22), rgba(157, 120, 74, 0.14));
+  box-shadow:
+    inset 0 0 0 1px rgba(95, 65, 39, 0.14),
+    0 4px 9px rgba(38, 25, 15, 0.08);
 }
 
 .card-stats {
@@ -1258,14 +1321,17 @@ h3 {
 .card-stat-chip {
   display: inline-grid;
   place-items: center;
-  min-width: 28px;
-  height: 28px;
-  padding: 0 7px;
+  min-width: 29px;
+  height: 29px;
+  padding: 0 8px;
   border-radius: 999px;
-  background: rgba(37, 22, 13, 0.16);
-  box-shadow: inset 0 0 0 1px rgba(82, 49, 25, 0.18);
-  color: rgba(32, 20, 13, 0.92);
-  font: 700 0.76rem/1 "Franklin Gothic Medium", "Arial Narrow", "Trebuchet MS", sans-serif;
+  background:
+    linear-gradient(180deg, rgba(81, 54, 31, 0.96), rgba(40, 27, 17, 0.98));
+  box-shadow:
+    inset 0 0 0 1px rgba(240, 211, 167, 0.14),
+    0 3px 7px rgba(28, 18, 11, 0.18);
+  color: #f1dfbb;
+  font: 700 0.74rem/1 "Franklin Gothic Medium", "Arial Narrow", "Trebuchet MS", sans-serif;
   letter-spacing: 0.04em;
 }
 
@@ -1285,17 +1351,17 @@ h3 {
 .sigil-badge {
   display: inline-grid;
   place-items: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 5px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
   border-radius: var(--radius-pill);
   background:
-    linear-gradient(180deg, rgba(41, 28, 18, 0.84), rgba(22, 15, 10, 0.9));
+    linear-gradient(180deg, rgba(67, 45, 27, 0.96), rgba(30, 20, 12, 0.98));
   box-shadow:
-    inset 0 0 0 1px rgba(255, 232, 195, 0.16),
-    0 2px 4px rgba(0, 0, 0, 0.14);
+    inset 0 0 0 1px rgba(255, 232, 195, 0.14),
+    0 3px 6px rgba(0, 0, 0, 0.16);
   color: #f4e3c2;
-  font: 700 0.7rem/1 "Franklin Gothic Medium", "Arial Narrow", "Trebuchet MS", sans-serif;
+  font: 700 0.68rem/1 "Franklin Gothic Medium", "Arial Narrow", "Trebuchet MS", sans-serif;
   text-align: center;
   transition: transform 120ms ease, filter 120ms ease;
 }
@@ -2259,13 +2325,13 @@ button:disabled {
 
   .slot-card,
   .hand-card {
-    min-height: 88px;
+    min-height: 106px;
     padding: 7px;
     font-size: 0.76rem;
   }
 
   .card-name {
-    font-size: 0.8rem;
+    font-size: 0.76rem;
   }
 
   .card-stats,
@@ -2280,7 +2346,9 @@ button:disabled {
   }
 
   .card-art-frame {
-    padding: 1px 0;
+    min-height: 68px;
+    padding: 5px 4px 25px;
+    border-radius: 13px;
   }
 
   .card-cost {
@@ -2289,12 +2357,16 @@ button:disabled {
   }
 
   .card-footer {
+    left: 4px;
+    right: 4px;
+    bottom: 4px;
     gap: 4px;
+    padding: 2px 3px;
   }
 
   .card-stat-chip {
-    min-width: 22px;
-    height: 22px;
+    min-width: 23px;
+    height: 23px;
     padding: 0 5px;
     font-size: 0.58rem;
   }

@@ -4452,12 +4452,11 @@ function formatCardMarkup(card) {
     ? `<span class="card-sigil-row">${card.sigils.map((sigil) => `<span class="sigil-badge" data-sigil="${escapeHtml(sigil)}" title="${escapeHtml(sigil)}">${escapeHtml(getSigilIcon(sigil))}</span>`).join("")}</span>`
     : "";
   const artMarkup = artPath
-    ? `<span class="card-art-frame"><img class="card-art-image" src="${escapeHtml(artPath)}" alt="${escapeHtml(card.name)} art"></span>`
-    : "";
+    ? `<span class="card-art-stage"><img class="card-art-image" src="${escapeHtml(artPath)}" alt="${escapeHtml(card.name)} art"></span>`
+    : `<span class="card-art-stage card-art-stage-empty"></span>`;
   return [
     `<span class="card-header"><span class="card-name">${escapeHtml(card.name)}</span><span class="card-cost">${escapeHtml(getCostShortLabel(card))}</span></span>`,
-    artMarkup,
-    `<span class="card-footer"><span class="card-stat-chip attack">A${card.attack}</span>${sigilMarkup}<span class="card-stat-chip health">H${card.health}</span></span>`
+    `<span class="card-art-frame">${artMarkup}<span class="card-footer"><span class="card-stat-chip attack">A${card.attack}</span>${sigilMarkup}<span class="card-stat-chip health">H${card.health}</span></span></span>`
   ].join("");
 }
 
